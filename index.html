@@ -65,7 +65,7 @@
     <article id="post-更稳定和更表意的代码" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/02/04/更稳定和更表意的代码/" class="article-date">
-  <time datetime="2016-02-04T02:13:53.000Z" itemprop="datePublished">2016-02-04</time>
+  <time datetime="2016-02-04T02:17:55.000Z" itemprop="datePublished">2016-02-04</time>
 </a>
     
   </div>
@@ -93,28 +93,26 @@
 <p>也就是下面这个样子：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">function userAddedNotification(name) &#123;&#10;&#9;//....&#10;&#9;notifyAdmin(name + &#39; is added&#39;)&#10;&#9;//....&#10;&#125;</span><br></pre></td></tr></table></figure>
 <p>而我是不赞同这么改的，当时因为时间比较晚了，也没有花太多时间详细讨论。现在终于腾出点时间来，还是应该好好讨论一下。上述修改方式的初衷是减少依赖。然而在我看来这么改其实并没有减少依赖，只是依赖的东西变了，原来依赖于<code>用户</code>这个概念，现在依赖于用户的一个属性。所以依赖并没有减少，那么我们再来看看关于依赖的另一个很重要的概念：稳定性。</p>
-<p>##依赖的稳定性<br>依赖不可避免，如果你的软件的所有组件都是完全分离开来，互相不调用，那么相信这个软件也是完全没用的。然而有依赖就会产生耦合。我们不希望被依赖方一修改，依赖方就要进行相应修改，所以我们希望这个依赖是 <strong>稳定的</strong>。</p>
+<h2 id="u4F9D_u8D56_u7684_u7A33_u5B9A_u6027"><a href="#u4F9D_u8D56_u7684_u7A33_u5B9A_u6027" class="headerlink" title="依赖的稳定性"></a>依赖的稳定性</h2><p>依赖不可避免，如果你的软件的所有组件都是完全分离开来，互相不调用，那么相信这个软件也是完全没用的。然而有依赖就会产生耦合。我们不希望被依赖方一修改，依赖方就要进行相应修改，所以我们希望这个依赖是 <strong>稳定的</strong>。</p>
 <p>从这个角度再来审视一下上述的修改。现在<code>userAddedNotification</code>函数使用的是<code>user</code>的<code>name</code>属性来拼装一个字符串消息，并发送出去。那么这个函数的实现是否可能会修改呢？从其字面意思来这个函数要做的事情是对<strong>添加用户</strong>这个事件进行响应，那么这个响应就很有可能不仅仅是发一条文字消息，也有可能会在数据库中插入一条记录，为了保证可追溯性，就会将<code>user</code>的<code>id</code>也保存在数据库中。所以传<code>user</code>作为参数是更合理的。</p>
 <p>即使不考虑未来的需求，使用<code>user.name</code>这个字段也只是<code>userAddedNotification</code>这个函数的实现细节，传<code>name</code>作为参数就逼迫着用户去了解你使用了<code>name</code>字段的这个细节。而这恰恰是用户没必要去了解的。</p>
 <p>依赖的稳定性很重要，它会大大减少维护软件的成本。而上述修改还有一个很明显的问题，那就是代码的表意性。</p>
-<p>##代码的表意性<br>代码写出来是给人看的，所以表意性很重要。既然函数名是说用户被添加了，那么不应该理所当然的把一个用户作为参数传进去吗？</p>
+<h2 id="u4EE3_u7801_u7684_u8868_u610F_u6027"><a href="#u4EE3_u7801_u7684_u8868_u610F_u6027" class="headerlink" title="代码的表意性"></a>代码的表意性</h2><p>代码写出来是给人看的，所以表意性很重要。既然函数名是说用户被添加了，那么不应该理所当然的把一个用户作为参数传进去吗？</p>
 <p>再看两个例子：</p>
-<p>###ActiveRecord<br><code>Rails</code>的<code>ActiveRecord</code>实现从<code>API</code>友好角度来看无疑是所有ORM里面做的最好的，没有之一。举个经典的例子：<code>Post</code>和<code>Comment</code>的关系。一个篇<code>Post</code>会有多个<code>Comment</code>，则在数据库的<code>comments</code>表中会存在一个字段叫做<code>post_id</code>，来和某个<code>post</code>的记录关联起来。但是作为上层用户，我们不希望了解这些细节，不管你底层用来进行关联的字段是<code>post_id</code>，<code>postId</code>，还是<code>postID</code>，我都统统不关心，我只希望能够通过这样的API来操作它们之间的关联：</p>
+<h3 id="ActiveRecord"><a href="#ActiveRecord" class="headerlink" title="ActiveRecord"></a>ActiveRecord</h3><p><code>Rails</code>的<code>ActiveRecord</code>实现从<code>API</code>友好角度来看无疑是所有ORM里面做的最好的，没有之一。举个经典的例子：<code>Post</code>和<code>Comment</code>的关系。一个篇<code>Post</code>会有多个<code>Comment</code>，则在数据库的<code>comments</code>表中会存在一个字段叫做<code>post_id</code>，来和某个<code>post</code>的记录关联起来。但是作为上层用户，我们不希望了解这些细节，不管你底层用来进行关联的字段是<code>post_id</code>，<code>postId</code>，还是<code>postID</code>，我都统统不关心，我只希望能够通过这样的API来操作它们之间的关联：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">comment = Comment.new&#10;post = Post.find_by_title(&#39;title&#39;)&#10;comment.post = post</span><br></pre></td></tr></table></figure>
 <p>在上述代码的第三行中，它进行的本质操作其实是<code>comment.post_id = post.id</code>，也就是说我需要的只是<code>post</code>的<code>id</code>字段，那么你喜欢<code>comment.post = post</code>还是<code>comment.post_id = post.id</code>呢？</p>
-<p>###Six</p>
-<p><a href="https://github.com/randx/six" target="_blank" rel="external">Six</a>是一个用来做权限控制的库，使用它可以写出这样的代码：</p>
+<h3 id="Six"><a href="#Six" class="headerlink" title="Six"></a>Six</h3><p><a href="https://github.com/randx/six" target="_blank" rel="external">Six</a>是一个用来做权限控制的库，使用它可以写出这样的代码：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, :push_code, project)</span><br></pre></td></tr></table></figure>
 <p>其中<code>current_user</code>知道自己在<code>project</code>上的角色，所以你可以想象这个<code>can?</code>函数的底层实现肯定就是先找到<code>current_user</code>在<code>project</code>上的角色，然后再看看这个角色是否能够进行<code>push_code</code>这个操作。底层的细节可能会更加复杂，但我是不需要关心这些的。我只关心<strong>这个人</strong>是否能够做<strong>这件事情</strong>。所以对比一下，你是否会喜欢下面的代码？</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), :push_code)</span><br></pre></td></tr></table></figure>
 <p>反正我是喜欢，即繁琐，又不够表意。</p>
-<p>##小结</p>
-<p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
+<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/" data-id="cik7mqs3t0001tu8z1vi78gmz" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/" data-id="cik7mvenj0001zq8zg6udmtcr" class="article-share-link">Share</a>
       
       
     </footer>
@@ -180,7 +178,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/" data-id="cik7mqs3f0000tu8z6tyvyku2" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/" data-id="cik7mvenb0000zq8ze5bbifmq" class="article-share-link">Share</a>
       
       
     </footer>
