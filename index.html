@@ -65,7 +65,7 @@
     <article id="post-更稳定和更表意的代码" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/02/04/更稳定和更表意的代码/" class="article-date">
-  <time datetime="2016-02-04T02:17:55.000Z" itemprop="datePublished">2016-02-04</time>
+  <time datetime="2016-02-04T03:25:43.000Z" itemprop="datePublished">2016-02-04</time>
 </a>
     
   </div>
@@ -84,7 +84,7 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>几天前在一次代码走查中就一段代码（示例代码）讨论展开了讨论。</p>
+        <p>几天前在一次代码走查中就一段代码（示例代码）展开了讨论。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">function userAddedNotification(user) &#123;&#10;&#9;//....&#10;&#9;notifyAdmin(user.name + &#39; is added&#39;)&#10;&#9;//....&#10;&#125;</span><br></pre></td></tr></table></figure>
 <p>在上面这段代码中，<code>user.name</code>是<code>user</code>这个入参唯一被使用的地方。所以一位同学的意见是：</p>
 <blockquote>
@@ -106,13 +106,13 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, :push_code, project)</span><br></pre></td></tr></table></figure>
 <p>其中<code>current_user</code>知道自己在<code>project</code>上的角色，所以你可以想象这个<code>can?</code>函数的底层实现肯定就是先找到<code>current_user</code>在<code>project</code>上的角色，然后再看看这个角色是否能够进行<code>push_code</code>这个操作。底层的细节可能会更加复杂，但我是不需要关心这些的。我只关心<strong>这个人</strong>是否能够做<strong>这件事情</strong>。所以对比一下，你是否会喜欢下面的代码？</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), :push_code)</span><br></pre></td></tr></table></figure>
-<p>反正我是喜欢，即繁琐，又不够表意。</p>
+<p>反正我是不喜欢，即繁琐，又不够表意。</p>
 <h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/" data-id="cik7mvenj0001zq8zg6udmtcr" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/" data-id="cik7paoli0001nm8zrktvbbpg" class="article-share-link">Share</a>
       
       
     </footer>
@@ -178,7 +178,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/" data-id="cik7mvenb0000zq8ze5bbifmq" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/" data-id="cik7paokp0000nm8zpn6xfde3" class="article-share-link">Share</a>
       
       
     </footer>
