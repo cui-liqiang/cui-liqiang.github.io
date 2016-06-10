@@ -8,10 +8,10 @@
   <meta name="description" content="CI脚本与CI之间的约定CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果">
 <meta property="og:type" content="article">
 <meta property="og:title" content="编写CI脚本的一些小Tips">
-<meta property="og:url" content="http://cui-liqiang.github.io/2016/02/07/编写CI脚本的一些小tip/index.html">
+<meta property="og:url" content="http://cui-liqiang.github.io/2016/06/10/编写CI脚本的一些小tip/index.html">
 <meta property="og:site_name" content="崔力强的博客">
 <meta property="og:description" content="CI脚本与CI之间的约定CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果">
-<meta property="og:updated_time" content="2016-02-07T04:41:48.000Z">
+<meta property="og:updated_time" content="2016-06-10T08:14:44.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="编写CI脚本的一些小Tips">
 <meta name="twitter:description" content="CI脚本与CI之间的约定CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果">
@@ -63,8 +63,8 @@
       <div class="outer">
         <section id="main"><article id="post-编写CI脚本的一些小tip" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/02/07/编写CI脚本的一些小tip/" class="article-date">
-  <time datetime="2016-02-07T04:41:48.000Z" itemprop="datePublished">2016-02-07</time>
+    <a href="/2016/06/10/编写CI脚本的一些小tip/" class="article-date">
+  <time datetime="2016-06-10T08:14:44.000Z" itemprop="datePublished">2016-06-10</time>
 </a>
     
   </div>
@@ -84,41 +84,41 @@
     <div class="article-entry" itemprop="articleBody">
       
         <h2 id="CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A"><a href="#CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A" class="headerlink" title="CI脚本与CI之间的约定"></a>CI脚本与CI之间的约定</h2><p>CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果脚本中的最后一行如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">exit 1</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">exit</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
 <p>则脚本返回码就是1。</p>
 <p>如果脚本中的最后一行是调用另外一个Shell脚本或者Ruby、Python等任何脚本，比如下面这两种情况：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh another_shell.sh</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ruby script.rb</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh another_shell.sh</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ruby script.rb</span><br></pre></td></tr></table></figure>
 <p>则整个脚本的返回码就是运行<code>another_shell.sh</code>或者<code>script.rb</code>的返回码。</p>
 <h2 id="u5931_u8D25_u7684_u811A_u672C"><a href="#u5931_u8D25_u7684_u811A_u672C" class="headerlink" title="失败的脚本"></a>失败的脚本</h2><p>如上面提到的，Shell脚本的返回码是最后一行命令的返回码。所以下面这个脚本在CI看起来其实是成功的：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh #&#36825;&#34892;&#26159;&#25191;&#34892;&#22833;&#36133;&#30340;&#10;echo &#39;deploy A successfully&#39;</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br></pre></td></tr></table></figure>
 <p>而事实上<code>deploy_A_component.sh</code>的运行是失败的，所以你会看到一些奇怪的现象，那就是部署失败了，但是本次构建的状态却是绿的。所以这个脚本并没有遵守上面提到的CI脚本和CI之间的约定。</p>
 <h2 id="u6355_u6349_u9519_u8BEF_uFF01"><a href="#u6355_u6349_u9519_u8BEF_uFF01" class="headerlink" title="捕捉错误！"></a>捕捉错误！</h2><p>如何才能知道<code>sh deploy_A_component.sh</code>这一步是成功还是失败的？可以有很多种方法，最朴素的一种方法就是在脚本中判断它的返回码（当然前提是<code>deploy_A_component.sh</code>已经遵守了这个约定）。使用<code>$?</code>可以获取上一个运行的脚本的返回码，也就是这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh #&#36825;&#34892;&#26159;&#25191;&#34892;&#22833;&#36133;&#30340;&#10;if [ $? -ne 0 ]; then&#10;&#9;echo &#39;deploy fail!&#39;&#10;&#9;exit 1&#10;else &#10;&#9;echo &#39;deploy A successfully&#39;&#10;fi</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="keyword">if</span> [ $? <span class="operator">-ne</span> <span class="number">0</span> ]; <span class="keyword">then</span></span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy fail!'</span></span><br><span class="line">	<span class="built_in">exit</span> <span class="number">1</span></span><br><span class="line"><span class="keyword">else</span> </span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure>
 <p>通过这种方式就可以对某一条特定命令的错误进行捕捉。但是如果每条语句都这么写，那也是挺大的工作量。</p>
 <p>还好Shell脚本提供了一种机制可以自动捕获每一行错误，那就是Shell Option。像下面这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -e&#10;&#10;sh deploy_A_component.sh&#10;sh deploy_B_component.sh&#10;sh deploy_B_component.sh</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh deploy_A_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br></pre></td></tr></table></figure>
 <p>其中<code>-e</code>表示<code>errexit</code>，即任何一条命令的返回码非零，则立即退出，且退出码即为执行错误的那条命令的返回码。这样世界就清净了，不需要再写茫茫多的<code>if [ $? -ne 0 ]</code>的判断了！</p>
 <h2 id="u5904_u7406_u4F8B_u5916"><a href="#u5904_u7406_u4F8B_u5916" class="headerlink" title="处理例外"></a>处理例外</h2><p><code>-e</code>虽然方便，但也有不方便的时候，比如下面这个例子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -e&#10;&#10;sh test_suite_A.sh&#10;sh test_suite_B.sh&#10;sh test_suite_C.sh</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
 <p>其实我的意图是无论<code>A</code>测试套件运行成功与否，都继续运行剩余的测试套件。但事实是任何一个套件运行失败，则脚本退出。在这个例子中能够看到<code>-e</code>的不便之处。</p>
 <p>那是不是就没法愉快地使用<code>-e</code>了呢，其实也不然。因为<code>errexit</code>是以一条语句为单位进行判定的，所以可以使用下面的形式来避免脚本的提前退出：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -e&#10;&#10;...&#10;&#10;sh test_suite_A.sh || echo &#39;test suite A falis&#39;&#10;sh test_suite_B.sh || echo &#39;test suite B falis&#39;&#10;sh test_suite_C.sh || echo &#39;test suite C falis&#39;&#10;...</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh || <span class="built_in">echo</span> <span class="string">'test suite A falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh || <span class="built_in">echo</span> <span class="string">'test suite B falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh || <span class="built_in">echo</span> <span class="string">'test suite C falis'</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
 <p>其中<code>||</code>的效果是，如果前面<code>sh test_suite_A.sh</code>的返回码非零，则会执行<code>||</code>后面的语句，但整个<code>sh test_suite_A.sh || echo &#39;test suite A falis&#39;</code>的返回码是<code>echo</code>语句的返回码，也就是0。将这种方式和<code>set -e</code>结合在一起使用，就可以对某些预料之内的错误返回码进行例外处理，同时还享受<code>set -e</code>带给你的自动错误捕获。</p>
 <h2 id="u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6"><a href="#u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6" class="headerlink" title="显式化运行进度"></a>显式化运行进度</h2><p>你可能见过这样的脚本：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo &#39;running test_suite_A.sh&#39;&#10;sh test_suite_A.sh&#10;echo &#39;running test_suite_B.sh&#39;&#10;sh test_suite_B.sh&#10;echo &#39;running test_suite_C.sh&#39;&#10;sh test_suite_C.sh</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_A.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_B.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_C.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
 <p>其目的是显式化脚本运行的进度，这样就可以很容易通过脚本运行的log来判断出在哪里出了错。但每条语句都这么写也未免太繁琐了。</p>
 <p>另一个Shell的Option可以帮到你，那就是<code>-v</code>，加了这个Option之后，每条运行的语句都会先输出到屏幕上，然后再执行。</p>
 <p><code>-x</code>与<code>-v</code>类似，其差别在于如果你的命令中包含变量，<code>-x</code>会将这个变量用真实的值替换掉，比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -x&#10;&#10;DIR=/home/admin/&#10;cd $DIR</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> -x</span><br><span class="line"></span><br><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$DIR</span></span><br></pre></td></tr></table></figure>
 <p>这个脚本的输出就是：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DIR=/home/admin/&#10;cd /home/admin/</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> /home/admin/</span><br></pre></td></tr></table></figure>
 <h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>使用<code>set -v</code>来保证错误真正能够报告给CI，使用<code>set -e</code>来可视化运行的进度。当然你可以直接使用<code>set -ev</code>来两者皆得。同时使用相应的手段来处理例外。</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/02/07/编写CI脚本的一些小tip/" data-id="cine5kdat0001rk8zfrjbqc6s" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/编写CI脚本的一些小tip/" data-id="cip9fu4cj0001hn8z7phpmyds" class="article-share-link">Share</a>
       
       
     </footer>
@@ -127,17 +127,17 @@
     
 <nav id="article-nav">
   
-    <a href="/2016/04/24/使用pushState和replaceState构建应用/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2016/06/10/前后端分离，JWT还是Cookie？/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Newer</strong>
       <div class="article-nav-title">
         
-          使用pushState和replaceState构建应用
+          前后端分离，JWT还是Cookie？
         
       </div>
     </a>
   
   
-    <a href="/2016/02/04/更稳定和更表意的代码/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2016/06/10/更稳定和更表意的代码/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
       <div class="article-nav-title">更稳定的依赖和更表意的代码</div>
     </a>
@@ -163,7 +163,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li></ul>
     </div>
   </div>
 
@@ -176,19 +176,23 @@
       <ul>
         
           <li>
-            <a href="/2016/04/24/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
+            <a href="/2016/06/10/前后端分离，JWT还是Cookie？/">前后端分离，JWT还是Cookie？</a>
           </li>
         
           <li>
-            <a href="/2016/02/07/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
+            <a href="/2016/06/10/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
           </li>
         
           <li>
-            <a href="/2016/02/04/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
+            <a href="/2016/06/10/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
           </li>
         
           <li>
-            <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+            <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+          </li>
+        
+          <li>
+            <a href="/2016/06/10/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
           </li>
         
       </ul>

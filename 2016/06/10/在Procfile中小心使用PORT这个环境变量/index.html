@@ -9,11 +9,11 @@
 web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_ENV:=&amp;quot;development&amp;quot;} -c ${UNICORN_CONFIG:=&amp;quot;config/unic">
 <meta property="og:type" content="article">
 <meta property="og:title" content="在Procfile中小心使用PORT这个环境变量">
-<meta property="og:url" content="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/index.html">
+<meta property="og:url" content="http://cui-liqiang.github.io/2016/06/10/在Procfile中小心使用PORT这个环境变量/index.html">
 <meta property="og:site_name" content="崔力强的博客">
 <meta property="og:description" content="事由最近工作的gitlab的代码库上，它使用foreman来管理web进程和后台任务进程，其中启动web进程的命令如下：
 web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_ENV:=&amp;quot;development&amp;quot;} -c ${UNICORN_CONFIG:=&amp;quot;config/unic">
-<meta property="og:updated_time" content="2016-01-10T13:15:19.000Z">
+<meta property="og:updated_time" content="2016-06-10T08:13:33.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="在Procfile中小心使用PORT这个环境变量">
 <meta name="twitter:description" content="事由最近工作的gitlab的代码库上，它使用foreman来管理web进程和后台任务进程，其中启动web进程的命令如下：
@@ -66,8 +66,8 @@ web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_E
       <div class="outer">
         <section id="main"><article id="post-在Procfile中小心使用PORT这个环境变量" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/" class="article-date">
-  <time datetime="2016-01-10T13:15:19.000Z" itemprop="datePublished">2016-01-10</time>
+    <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/" class="article-date">
+  <time datetime="2016-06-10T08:13:33.000Z" itemprop="datePublished">2016-06-10</time>
 </a>
     
   </div>
@@ -97,9 +97,9 @@ web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_E
 <p><code>port: 3000</code></p>
 <p>咦？会是这个问题吗，不过这个是小写的<code>port</code>呀，为什么会影响到那个<code>PORT</code>的环境变量呢？如果不想知道中间的探寻过程，可以直接跳到下面的结论部分。</p>
 <h2 id="u63A2_u5BFB"><a href="#u63A2_u5BFB" class="headerlink" title="探寻"></a>探寻</h2><p>粗略地查了查<code>foreman</code>的<a href="https://github.com/ddollar/foreman/wiki" target="_blank" rel="external">wiki</a>，发现并没有涉及到这个资料。然后再看看<code>foreman</code>的源码，在<code>cli.rb</code>这个文件中发现了这么一行：</p>
-<p><code>defaults = ::YAML::load_file(&quot;.foreman&quot;) || {}</code></p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults = <span class="constant">::YAML::</span>load_file(<span class="string">".foreman"</span>) || &#123;&#125;</span><br></pre></td></tr></table></figure>
 <p>嗯，看起来<code>foreman</code>确实读了这个文件，然后把它放到了<code>engine.rb</code>的<code>base_port</code>这个方法中供别人调用：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">def base_port&#10;&#9;(options[:port] || env[&#34;PORT&#34;] || ENV[&#34;PORT&#34;] || 5000).to_i&#10;end</span><br></pre></td></tr></table></figure>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">base_port</span></span></span><br><span class="line">	(options[<span class="symbol">:port</span>] || env[<span class="string">"PORT"</span>] || <span class="constant">ENV</span>[<span class="string">"PORT"</span>] || <span class="number">5000</span>).to_i</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
 <p>那这个<code>base_port</code>是个啥呢，其实就是如果你不想给<code>Procfile</code>中定义的那些任务分配端口的话，它就会从这个<code>base_port</code>开始100、100的往上加，并分配给这些进程。但是每个进程使用端口的方式是不一样的，那通过什么方式把这个端口分配给大家呢？答案就是，<code>PORT</code>这个环境变量。。。</p>
 <p>所以说<code>-p ${PORT:=&quot;3000”}</code>中的这个默认的<code>3000</code>其实永远都不会发生作用，如果你不通过任何形式指定<code>PORT</code>，那么默认值就是从<code>5000</code>这个<code>base_port</code>算出来的一个值。但这个值也可以通过命令行指定，即<code>-p</code>。还有一种方式就是那个<code>.foreman</code>文件了。</p>
 <p>看下面这个例子：<br>对于这样的<code>Procfile</code>:</p>
@@ -120,7 +120,7 @@ web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_E
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/" data-id="cine5kdb50003rk8z1tnsim26" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/在Procfile中小心使用PORT这个环境变量/" data-id="cip9fu4cn0003hn8zssfk2g1g" class="article-share-link">Share</a>
       
       
     </footer>
@@ -129,7 +129,7 @@ web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_E
     
 <nav id="article-nav">
   
-    <a href="/2016/02/04/更稳定和更表意的代码/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2016/06/10/更稳定和更表意的代码/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Newer</strong>
       <div class="article-nav-title">
         
@@ -138,6 +138,11 @@ web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_E
       </div>
     </a>
   
+  
+    <a href="/2016/06/10/使用pushState和replaceState构建应用/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">使用pushState和replaceState构建应用</div>
+    </a>
   
 </nav>
 
@@ -160,7 +165,7 @@ web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_E
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li></ul>
     </div>
   </div>
 
@@ -173,19 +178,23 @@ web: bundle exec unicorn_rails -p ${PORT:=&amp;quot;3000&amp;quot;} -E ${RAILS_E
       <ul>
         
           <li>
-            <a href="/2016/04/24/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
+            <a href="/2016/06/10/前后端分离，JWT还是Cookie？/">前后端分离，JWT还是Cookie？</a>
           </li>
         
           <li>
-            <a href="/2016/02/07/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
+            <a href="/2016/06/10/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
           </li>
         
           <li>
-            <a href="/2016/02/04/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
+            <a href="/2016/06/10/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
           </li>
         
           <li>
-            <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+            <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+          </li>
+        
+          <li>
+            <a href="/2016/06/10/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
           </li>
         
       </ul>

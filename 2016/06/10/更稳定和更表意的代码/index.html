@@ -6,21 +6,27 @@
   <title>更稳定的依赖和更表意的代码 | 崔力强的博客</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="几天前在一次代码走查中就一段代码（示例代码）展开了讨论。
-1function userAddedNotification(user) &amp;#123;&amp;#10;&amp;#9;//....&amp;#10;&amp;#9;notifyAdmin(user.name + &amp;#39; is added&amp;#39;)&amp;#10;&amp;#9;//....&amp;#10;&amp;#125;
-在上面这段代码中，user.name是user这个入参唯一被使用">
+12345function userAddedNotification(user) &amp;#123;	//....	notifyAdmin(user.name + &apos; is added&apos;)	//....&amp;#125;
+在上面这段代码中，user.name是user这个入参唯一被使用的地方。所以一位同学的意见是：
+
+既然唯一使用user的地方只是使">
 <meta property="og:type" content="article">
 <meta property="og:title" content="更稳定的依赖和更表意的代码">
-<meta property="og:url" content="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/index.html">
+<meta property="og:url" content="http://cui-liqiang.github.io/2016/06/10/更稳定和更表意的代码/index.html">
 <meta property="og:site_name" content="崔力强的博客">
 <meta property="og:description" content="几天前在一次代码走查中就一段代码（示例代码）展开了讨论。
-1function userAddedNotification(user) &amp;#123;&amp;#10;&amp;#9;//....&amp;#10;&amp;#9;notifyAdmin(user.name + &amp;#39; is added&amp;#39;)&amp;#10;&amp;#9;//....&amp;#10;&amp;#125;
-在上面这段代码中，user.name是user这个入参唯一被使用">
-<meta property="og:updated_time" content="2016-02-04T03:25:43.000Z">
+12345function userAddedNotification(user) &amp;#123;	//....	notifyAdmin(user.name + &apos; is added&apos;)	//....&amp;#125;
+在上面这段代码中，user.name是user这个入参唯一被使用的地方。所以一位同学的意见是：
+
+既然唯一使用user的地方只是使">
+<meta property="og:updated_time" content="2016-06-10T08:13:55.000Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="更稳定的依赖和更表意的代码">
 <meta name="twitter:description" content="几天前在一次代码走查中就一段代码（示例代码）展开了讨论。
-1function userAddedNotification(user) &amp;#123;&amp;#10;&amp;#9;//....&amp;#10;&amp;#9;notifyAdmin(user.name + &amp;#39; is added&amp;#39;)&amp;#10;&amp;#9;//....&amp;#10;&amp;#125;
-在上面这段代码中，user.name是user这个入参唯一被使用">
+12345function userAddedNotification(user) &amp;#123;	//....	notifyAdmin(user.name + &apos; is added&apos;)	//....&amp;#125;
+在上面这段代码中，user.name是user这个入参唯一被使用的地方。所以一位同学的意见是：
+
+既然唯一使用user的地方只是使">
   
     <link rel="alternate" href="/atom.xml" title="崔力强的博客" type="application/atom+xml">
   
@@ -69,8 +75,8 @@
       <div class="outer">
         <section id="main"><article id="post-更稳定和更表意的代码" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/02/04/更稳定和更表意的代码/" class="article-date">
-  <time datetime="2016-02-04T03:25:43.000Z" itemprop="datePublished">2016-02-04</time>
+    <a href="/2016/06/10/更稳定和更表意的代码/" class="article-date">
+  <time datetime="2016-06-10T08:13:55.000Z" itemprop="datePublished">2016-06-10</time>
 </a>
     
   </div>
@@ -90,13 +96,13 @@
     <div class="article-entry" itemprop="articleBody">
       
         <p>几天前在一次代码走查中就一段代码（示例代码）展开了讨论。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">function userAddedNotification(user) &#123;&#10;&#9;//....&#10;&#9;notifyAdmin(user.name + &#39; is added&#39;)&#10;&#9;//....&#10;&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">user</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(user.name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>在上面这段代码中，<code>user.name</code>是<code>user</code>这个入参唯一被使用的地方。所以一位同学的意见是：</p>
 <blockquote>
 <p>既然唯一使用user的地方只是使用了它的name属性，那么为什么不减少函数对外的依赖，把入参改成name？</p>
 </blockquote>
 <p>也就是下面这个样子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">function userAddedNotification(name) &#123;&#10;&#9;//....&#10;&#9;notifyAdmin(name + &#39; is added&#39;)&#10;&#9;//....&#10;&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">name</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>而我是不赞同这么改的，当时因为时间比较晚了，也没有花太多时间详细讨论。现在终于腾出点时间来，还是应该好好讨论一下。上述修改方式的初衷是减少依赖。然而在我看来这么改其实并没有减少依赖，只是依赖的东西变了，原来依赖于<code>用户</code>这个概念，现在依赖于用户的一个属性。所以依赖并没有减少，那么我们再来看看关于依赖的另一个很重要的概念：稳定性。</p>
 <h2 id="u4F9D_u8D56_u7684_u7A33_u5B9A_u6027"><a href="#u4F9D_u8D56_u7684_u7A33_u5B9A_u6027" class="headerlink" title="依赖的稳定性"></a>依赖的稳定性</h2><p>依赖不可避免，如果你的软件的所有组件都是完全分离开来，互相不调用，那么相信这个软件也是完全没用的。然而有依赖就会产生耦合。我们不希望被依赖方一修改，依赖方就要进行相应修改，所以我们希望这个依赖是 <strong>稳定的</strong>。</p>
 <p>从这个角度再来审视一下上述的修改。现在<code>userAddedNotification</code>函数使用的是<code>user</code>的<code>name</code>属性来拼装一个字符串消息，并发送出去。那么这个函数的实现是否可能会修改呢？从其字面意思来这个函数要做的事情是对<strong>添加用户</strong>这个事件进行响应，那么这个响应就很有可能不仅仅是发一条文字消息，也有可能会在数据库中插入一条记录，为了保证可追溯性，就会将<code>user</code>的<code>id</code>也保存在数据库中。所以传<code>user</code>作为参数是更合理的。</p>
@@ -105,19 +111,19 @@
 <h2 id="u4EE3_u7801_u7684_u8868_u610F_u6027"><a href="#u4EE3_u7801_u7684_u8868_u610F_u6027" class="headerlink" title="代码的表意性"></a>代码的表意性</h2><p>代码写出来是给人看的，所以表意性很重要。既然函数名是说用户被添加了，那么不应该理所当然的把一个用户作为参数传进去吗？</p>
 <p>再看两个例子：</p>
 <h3 id="ActiveRecord"><a href="#ActiveRecord" class="headerlink" title="ActiveRecord"></a>ActiveRecord</h3><p><code>Rails</code>的<code>ActiveRecord</code>实现从<code>API</code>友好角度来看无疑是所有ORM里面做的最好的，没有之一。举个经典的例子：<code>Post</code>和<code>Comment</code>的关系。一个篇<code>Post</code>会有多个<code>Comment</code>，则在数据库的<code>comments</code>表中会存在一个字段叫做<code>post_id</code>，来和某个<code>post</code>的记录关联起来。但是作为上层用户，我们不希望了解这些细节，不管你底层用来进行关联的字段是<code>post_id</code>，<code>postId</code>，还是<code>postID</code>，我都统统不关心，我只希望能够通过这样的API来操作它们之间的关联：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">comment = Comment.new&#10;post = Post.find_by_title(&#39;title&#39;)&#10;comment.post = post</span><br></pre></td></tr></table></figure>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">comment = <span class="constant">Comment</span>.new</span><br><span class="line">post = <span class="constant">Post</span>.find_by_title(<span class="string">'title'</span>)</span><br><span class="line">comment.post = post</span><br></pre></td></tr></table></figure>
 <p>在上述代码的第三行中，它进行的本质操作其实是<code>comment.post_id = post.id</code>，也就是说我需要的只是<code>post</code>的<code>id</code>字段，那么你喜欢<code>comment.post = post</code>还是<code>comment.post_id = post.id</code>呢？</p>
 <h3 id="Six"><a href="#Six" class="headerlink" title="Six"></a>Six</h3><p><a href="https://github.com/randx/six" target="_blank" rel="external">Six</a>是一个用来做权限控制的库，使用它可以写出这样的代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, :push_code, project)</span><br></pre></td></tr></table></figure>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, <span class="symbol">:push_code</span>, project)</span><br></pre></td></tr></table></figure>
 <p>其中<code>current_user</code>知道自己在<code>project</code>上的角色，所以你可以想象这个<code>can?</code>函数的底层实现肯定就是先找到<code>current_user</code>在<code>project</code>上的角色，然后再看看这个角色是否能够进行<code>push_code</code>这个操作。底层的细节可能会更加复杂，但我是不需要关心这些的。我只关心<strong>这个人</strong>是否能够做<strong>这件事情</strong>。所以对比一下，你是否会喜欢下面的代码？</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), :push_code)</span><br></pre></td></tr></table></figure>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), <span class="symbol">:push_code</span>)</span><br></pre></td></tr></table></figure>
 <p>反正我是不喜欢，即繁琐，又不够表意。</p>
 <h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/" data-id="cine5kdb20002rk8z3t14h9us" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/更稳定和更表意的代码/" data-id="cip9fu4cl0002hn8zlrzsvf5v" class="article-share-link">Share</a>
       
       
     </footer>
@@ -126,7 +132,7 @@
     
 <nav id="article-nav">
   
-    <a href="/2016/02/07/编写CI脚本的一些小tip/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2016/06/10/编写CI脚本的一些小tip/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Newer</strong>
       <div class="article-nav-title">
         
@@ -136,7 +142,7 @@
     </a>
   
   
-    <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/" id="article-nav-older" class="article-nav-link-wrap">
+    <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/" id="article-nav-older" class="article-nav-link-wrap">
       <strong class="article-nav-caption">Older</strong>
       <div class="article-nav-title">在Procfile中小心使用PORT这个环境变量</div>
     </a>
@@ -162,7 +168,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li></ul>
     </div>
   </div>
 
@@ -175,19 +181,23 @@
       <ul>
         
           <li>
-            <a href="/2016/04/24/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
+            <a href="/2016/06/10/前后端分离，JWT还是Cookie？/">前后端分离，JWT还是Cookie？</a>
           </li>
         
           <li>
-            <a href="/2016/02/07/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
+            <a href="/2016/06/10/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
           </li>
         
           <li>
-            <a href="/2016/02/04/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
+            <a href="/2016/06/10/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
           </li>
         
           <li>
-            <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+            <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+          </li>
+        
+          <li>
+            <a href="/2016/06/10/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
           </li>
         
       </ul>

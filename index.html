@@ -62,10 +62,10 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-使用pushState和replaceState构建应用" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="post-前后端分离，JWT还是Cookie？" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/04/24/使用pushState和replaceState构建应用/" class="article-date">
-  <time datetime="2016-04-24T05:46:59.000Z" itemprop="datePublished">2016-04-24</time>
+    <a href="/2016/06/10/前后端分离，JWT还是Cookie？/" class="article-date">
+  <time datetime="2016-06-10T08:14:58.000Z" itemprop="datePublished">2016-06-10</time>
 </a>
     
   </div>
@@ -76,7 +76,302 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2016/04/24/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
+      <a class="article-title" href="/2016/06/10/前后端分离，JWT还是Cookie？/">前后端分离，JWT还是Cookie？</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="u524D_u540E_u7AEF_u5206_u79BB_uFF1F"><a href="#u524D_u540E_u7AEF_u5206_u79BB_uFF1F" class="headerlink" title="前后端分离？"></a>前后端分离？</h2><p>随着前端技术的迅猛发展，前后端分离的架构也越来越流行。前后端分离的准确概念是什么，不是本文关注的重点，网上有大量的文章来讲述。</p>
+<p>给定这样的架构：后台服务以API的形式存在（包括认证和授权），前端服务是纯静态的页面。前端的JS会调用后台服务来完成相应的功能，当然也会做认证和授权，然后再消费其相应的API。如下图所展示的样子：</p>
+<p><img src="http://7xtbgn.com2.z0.glb.clouddn.com/full-front-end-back-end-arch.png" alt=""></p>
+<p>如上图所示。当用户访问<code>http://www.app.com</code>时，得到的仅仅是一个包含<code>html</code>、<code>css</code>和<code>js</code>的静态页面。该静态页面会发起ajax请求访问<code>http://service.app.com</code>，通过API进行剩余的交互。</p>
+<p>与传统的一站式的web应用对比，这种做法有以下好处：</p>
+<ol>
+<li>前端页面和后台服务不再是一体的，而是可以分别独立部署的。</li>
+<li>前端的发布变的很简单，只需要简单的更新一下静态文件到CDN或者OSS(S3)即可。</li>
+<li>后台只提供API，所以测试起来也会非常简单。</li>
+<li>前端支持SAP的框架非常多，而且基本上每种都会自带测试框架，所以前端的测试也会简单的多。</li>
+</ol>
+<p>当然这也会带来一些挑战，比如通过API如何做认证授权及如何做<code>ajax</code>跨域访问。而本文要讨论的焦点就是应用的认证授权。</p>
+<h2 id="u8BA4_u8BC1_uFF08Authentication_uFF09_u548C_u6388_u6743_uFF08Authorization_uFF09"><a href="#u8BA4_u8BC1_uFF08Authentication_uFF09_u548C_u6388_u6743_uFF08Authorization_uFF09" class="headerlink" title="认证（Authentication）和授权（Authorization）"></a>认证（Authentication）和授权（Authorization）</h2><h3 id="u4F20_u7EDF_u7684web_u8BA4_u8BC1_u6388_u6743"><a href="#u4F20_u7EDF_u7684web_u8BA4_u8BC1_u6388_u6743" class="headerlink" title="传统的web认证授权"></a>传统的web认证授权</h3><p>传统的流程如下：</p>
+<ol>
+<li>浏览器访问<code>www.app.com</code>，打开登录页面。</li>
+<li>输入认证信息，提交表单，如果服务器验证通过，则向浏览器写会一个<code>cookie</code>，用来标识这个用户和服务器之间的连接。并且通常服务器端会再维护一个<code>session</code>来与<code>cookie</code>中携带的信息做关联，在其中保存更多的私密信息。这个<code>cookie</code>会与<code>www.app.com</code>这个域名进行绑定。</li>
+<li>当浏览器访问<code>www.app.com</code>站点上的其它资源时，会自动把刚才设置的<code>cookie</code>带会给服务器，服务器拿到<code>cookie</code>，就能知道这个请求来自哪个用户，从而给出相应的响应。</li>
+</ol>
+<h3 id="u57FA_u4E8EAPI_u7684_u8BA4_u8BC1_u6388_u6743"><a href="#u57FA_u4E8EAPI_u7684_u8BA4_u8BC1_u6388_u6743" class="headerlink" title="基于API的认证授权"></a>基于API的认证授权</h3><p>切换到API交互的方式后，来看看上述的过程有什么变化：</p>
+<h4 id="u7EE7_u7EED_u4F7F_u7528cookie"><a href="#u7EE7_u7EED_u4F7F_u7528cookie" class="headerlink" title="继续使用cookie"></a>继续使用cookie</h4><ol>
+<li>认证不再使用表单登录，而是向<code>service.app.com</code>发起<code>ajax</code>的<code>post</code>请求，把认证信息发送到服务器，服务器验证成功后，仍然可以往客户端写<code>cookie</code>。同样这个<code>cookie</code>与<code>service.app.com</code>绑定。</li>
+<li>后续的数据交互也是通过<code>ajax</code>的形式进行，因为访问的仍然是<code>service.app.com</code>这个域名，所以<code>cookie</code>同样可以带回到服务器，没问题。</li>
+</ol>
+<p>但这里有个问题，那就是<code>service.app.com</code>和<code>www.app.com</code>这两个域名是不同的，因为安全考虑，浏览器对于跨域的访问及<code>cookie</code>的使用做出了很多限制（关于跨域的定义和限制详见<a href="https://developer.mozilla.org/zh-CN/docs/Web/Security/Same-origin_policy" target="_blank" rel="external">MDN</a>）。所以上述的API认证交互方式需要做三个特殊处理：</p>
+<ol>
+<li>允许在域名为<code>www.app.com</code>的应用中向<code>service.app.com</code>发起请求，这是一个跨域请求。</li>
+<li>在域名为<code>www.app.com</code>的应用中向<code>service.app.com</code>发起的请求时，允许响应向浏览器写入绑定在<code>service.app.com</code>上的<code>cookie</code>。</li>
+<li>允许在域名为<code>www.app.com</code>的应用中向<code>service.app.com</code>发起请求时，带上<code>cookie</code>信息。</li>
+</ol>
+<p>这三点都是跨域请求，所以都需要使用<a href="https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS" target="_blank" rel="external">CORS</a>的<code>Access-Control-Allow-Origin</code>来允许跨域请求。对于第二点和第三点来说，还需要使用<a href="https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Access_control_CORS" target="_blank" rel="external">CORS</a>中的<code>Access-Control-Allow-Credentials</code>和<code>ajax</code>的<a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Requests_with_credentials" target="_blank" rel="external">withCredentials</a>这个参数。</p>
+<p>具体的代码如下：</p>
+<p>为了模拟对两个不同域名发送请求，修改/etc/hosts文件：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="number">127.0</span>.<span class="number">0.1</span> www.app.com</span><br><span class="line"><span class="number">127.0</span>.<span class="number">0.1</span> service.app.com</span><br></pre></td></tr></table></figure>
+<p>使用<code>express</code>写的服务端主程序：<code>server.js</code></p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">var</span> express = <span class="built_in">require</span>(<span class="string">'express'</span>);</span><br><span class="line"><span class="keyword">var</span> app = express();</span><br><span class="line"></span><br><span class="line">app.use(express.static(__dirname + <span class="string">'/public'</span>)); <span class="comment">//用于www.app.com访问的模拟静态页面</span></span><br><span class="line"></span><br><span class="line">app.use(<span class="built_in">require</span>(<span class="string">'cookie-parser'</span>)());</span><br><span class="line"></span><br><span class="line">app.post(<span class="string">'/api/login'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">req, res</span>) </span>&#123;</span><br><span class="line">	res.header(&#123;</span><br><span class="line">		<span class="string">'Access-Control-Allow-Credentials'</span>: <span class="literal">true</span>, <span class="comment">//允许前端的withCredentials选项</span></span><br><span class="line">		<span class="string">'Access-Control-Allow-Origin'</span>: <span class="string">'http://www.app.com:8000'</span> <span class="comment">//允许来自域为http://www.app.com:8000的请求</span></span><br><span class="line">	&#125;).cookie(<span class="string">'token'</span>, <span class="string">'xxxxxxxxx'</span>).end(); <span class="comment">//简单起见，未做真正的认证，颁发token到cookie中</span></span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">app.get(<span class="string">'/api/data'</span>, <span class="function"><span class="keyword">function</span>(<span class="params">req, res</span>) </span>&#123;</span><br><span class="line">	<span class="built_in">console</span>.log(<span class="string">'token is '</span> + req.cookies.token) <span class="comment">//可以在请求的cookie中取到token</span></span><br><span class="line">	res.header(&#123;</span><br><span class="line">		<span class="string">'Access-Control-Allow-Credentials'</span>: <span class="literal">true</span>, <span class="comment">//允许前端的withCredentials选项</span></span><br><span class="line">		<span class="string">'Access-Control-Allow-Origin'</span>: <span class="string">'http://www.app.com:8000'</span><span class="comment">//允许来自域为http://www.app.com:8000的请求</span></span><br><span class="line">	&#125;).json(&#123;data: <span class="string">'value'</span>&#125;).end();</span><br><span class="line">&#125;);</span><br><span class="line"></span><br><span class="line">app.listen(<span class="number">8000</span>);</span><br></pre></td></tr></table></figure>
+<p>前端的js文件</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	$.ajax(&#123;</span><br><span class="line">		type: <span class="string">'POST'</span>,</span><br><span class="line">		url: <span class="string">'http://service.app.com:8000/api/login'</span>,</span><br><span class="line">		xhrFields: &#123;</span><br><span class="line">	        withCredentials: <span class="literal">true</span>  <span class="comment">//添加该选项，以允许ajax响应可以往浏览器写入cookie</span></span><br><span class="line">	    &#125;,</span><br><span class="line">	&#125;).then(<span class="function"><span class="keyword">function</span>(<span class="params">data</span>) </span>&#123;</span><br><span class="line">		$.ajax(&#123;</span><br><span class="line">			type: <span class="string">'GET'</span>,</span><br><span class="line">			url: <span class="string">'http://service.app.com:8000/api/data'</span>,</span><br><span class="line">			xhrFields: &#123; </span><br><span class="line">		        withCredentials: <span class="literal">true</span> <span class="comment">//添加该选项，以允许ajax请求带上cookie</span></span><br><span class="line">		    &#125;</span><br><span class="line">			dataType: <span class="string">'JSON'</span></span><br><span class="line">		&#125;).then(<span class="function"><span class="keyword">function</span>(<span class="params">data</span>) </span>&#123;</span><br><span class="line">			<span class="built_in">console</span>.log(data)</span><br><span class="line">		&#125;)</span><br><span class="line">	&#125;).fail(<span class="function"><span class="keyword">function</span>(<span class="params">data</span>) </span>&#123;</span><br><span class="line">		<span class="built_in">console</span>.log(err);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
+<p>然后在浏览器中键入<code>http://www.app.com</code>，则应该可以在前端的<code>console</code>中看到这样的字样：</p>
+<p><code>Object {data: &quot;value&quot;}</code></p>
+<p>并在后台的<code>express</code>应用中看到这样的<code>log</code>：</p>
+<p><code>token is xxxxxxxxx</code></p>
+<p>这说明<code>service.app.com</code>确实能够对发送来的认证请求进行验证，并成功往<code>cookie</code>中写回<code>token</code>；并且再次发送请求到<code>service.app.com</code>获取数据时，也确实能够把<code>token</code>带回来。</p>
+<p>完整的代码请查看<a href="https://github.com/cui-liqiang/frontend-backend" target="_blank" rel="external">https://github.com/cui-liqiang/frontend-backend</a></p>
+<p><code>cookie</code>能够很好地完成前后端分离应用的认证和授权。但有个前提，那就是你做的是<code>web</code>应用。如果你的后台<code>service</code>既想支持<code>web</code>，又想支持移动端，则<code>cookie</code>就不行了。既然<code>cookie base authentication</code>行不通了，那就用<code>token base authentication</code>吧。</p>
+<p>所谓的<code>token base authentication</code>就是在认证的时候在响应体中添加某种形式的<code>token</code>，然后再在发送其它请求时候把这个<code>token</code>通过请求头发送回来。听起来跟<code>cookie</code>有点像，是吗？只不过<code>cookie</code>的存储不用你显式去做，并且请求中<code>cookie</code>也是浏览器自动给你带上的，也不需要你显式去做。那么<code>token base authentication</code>还有什么特别之处吗？让我们来看一个该类型的一个协议：<code>JWT</code>。</p>
+<h4 id="JWT_uFF08JSON_Web_Tokens_uFF09"><a href="#JWT_uFF08JSON_Web_Tokens_uFF09" class="headerlink" title="JWT（JSON Web Tokens）"></a>JWT（JSON Web Tokens）</h4><p><code>JWT</code>是一个完整的协议，它的基本原理就是上面提到的过程。不过在这个基础上，它又添加了一些额外的能力和限制。关于完整的JWT规范，建议大家去看它的<a href="https://jwt.io" target="_blank" rel="external">官网</a>。这里只列出一些要点，希望能够帮助你快速理解JWT。</p>
+<ol>
+<li>向客户端颁发JWT时，并没有规定通过什么形式返回。所以可以是响应体，也可以是响应头。</li>
+<li>JWT的数据可以使用JWE（JSON Web Encryption）进行加密，或者使用JWS（JSON Web Signature）进行签名。或者先加密，再签名。</li>
+<li>JWT内包含固定的数据结构。其中有签名或加密的算法、消息体、还有签名（如果用了JWS的话）。</li>
+<li>其中消息头和消息体都是JSON格式的（当然为了传输方便，最后还是做了一次BASE64编码的）。</li>
+<li>消息体中的键值对被称为<code>claim</code>。包含三种类型：保留的、公共的和私有的。其中保留的那些你可以跟<code>HTTP</code>中的保留<code>header</code>进行类比。比如保留的<code>claim</code>包含了过期时间等信息。</li>
+<li><code>JWT token</code>在客户端发起<code>ajax</code>请求时，必须通过<code>Authorization</code>这个响应头带过来。</li>
+</ol>
+<p><code>JWT</code>的规范很全面，但是在实际应用中很多是用不到的，这也是让我理解起来比较困难的地方，比如对于<code>JWE</code>来说，可以使用不同的方式进行加密。而加密的秘钥是可以在通信双方共享的（如果是对称加密的话）。我当时就一直在想，客户端要这个秘钥干什么呢，你给我啥<code>token</code>，我原样返回不就得了吗？想了半天，只能这么理解：<code>JWT</code>的使用范围是很广的，不光能用于<code>web</code>这个场景，还可以用在系统间调用等等。在那些场景下，可能是需要通信对端进行解密的。</p>
+<p>基于上面的这些提示，再结合<a href="https://jwt.io" target="_blank" rel="external">官网</a>的详细描述，希望你能够快速地了解<code>JWT</code>，及它和<code>cookie</code>的差别。</p>
+<p>现在你知道，在<code>web</code>前后端分离的上下文中，即可以使用<code>cookie</code>做认证和授权，也可以使用<code>JWT</code>。那么到底应该使用哪个呢？</p>
+<h4 id="u524D_u540E_u7AEF_u5206_u79BB_u4E2DJWT_u548Ccookie_u7684_u6BD4_u8F83"><a href="#u524D_u540E_u7AEF_u5206_u79BB_u4E2DJWT_u548Ccookie_u7684_u6BD4_u8F83" class="headerlink" title="前后端分离中JWT和cookie的比较"></a>前后端分离中JWT和cookie的比较</h4><ol>
+<li><strong>库的支持</strong>：这个两者不相伯仲，在各个平台中都有相应的库。</li>
+<li><strong>编写代码量</strong>：<code>cookie</code>不需要显式地存储及发送<code>token</code>，但需要指定上述的那两个响应头，并且在发送<code>ajax</code>请求的时候需要指定特定的选项；<code>JWT</code>需要显示的存储及发送<code>token</code>（但有的前端库已经集成了<code>JWT</code>，所以也不需要写太多的代码），<code>ajax</code>选项不需要了，但是支持同源的响应头还是需要的。</li>
+<li><strong>安全性</strong>：<code>JWT</code>可以通过签名来防止<code>token</code>被篡改，还可以通过加密来防止<code>token</code>被窃听。很多服务器端的库也支持<code>cookie</code>的签名，加密功能暂时没有看到，不过自己实现一个也是很简单的。而且对于<code>HTTPS</code>的通信通道来说，加密也有些多余。</li>
+<li><strong>兼容性</strong>：对于已经存在的使用<code>session</code>的站点来说，如果想进行前后端改造，那么<code>cookie</code>的方案是比较友好的，因为改动量会很小；而JWT需要重新使用JWT的库来实现一遍，不过代价也不大。</li>
+<li><strong>扩展性</strong>：虽然我们现在在讨论<code>web</code>，但是如果你的后端将来也要支持移动端的话，则<code>JWT</code>是更通用的方案。</li>
+</ol>
+<p>再补充一点，在<code>web</code>的场景下，<code>JWT</code>需要有个地方存储，事实上比较推荐的存储方式就是放到<code>cookie</code>中。这种画蛇添足的做法，我只能理解为你很喜欢<code>JWT</code>的<code>JSON</code>格式了。</p>
+<h2 id="u603B_u7ED3"><a href="#u603B_u7ED3" class="headerlink" title="总结"></a>总结</h2><p><code>JWT</code>和<code>cookie</code>从功能性上来讲都能很好的满足<code>web</code>前后端分离这个场景。对于你来说，要根据你项目的技术栈、相应工具的支持程度和未来是否要使用移动端等来选择合适你的方式。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/前后端分离，JWT还是Cookie？/" data-id="cip9fus0q0000ib8zhuzucl9c" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-编写CI脚本的一些小tip" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/06/10/编写CI脚本的一些小tip/" class="article-date">
+  <time datetime="2016-06-10T08:14:44.000Z" itemprop="datePublished">2016-06-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/06/10/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A"><a href="#CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A" class="headerlink" title="CI脚本与CI之间的约定"></a>CI脚本与CI之间的约定</h2><p>CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果脚本中的最后一行如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">exit</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+<p>则脚本返回码就是1。</p>
+<p>如果脚本中的最后一行是调用另外一个Shell脚本或者Ruby、Python等任何脚本，比如下面这两种情况：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh another_shell.sh</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ruby script.rb</span><br></pre></td></tr></table></figure>
+<p>则整个脚本的返回码就是运行<code>another_shell.sh</code>或者<code>script.rb</code>的返回码。</p>
+<h2 id="u5931_u8D25_u7684_u811A_u672C"><a href="#u5931_u8D25_u7684_u811A_u672C" class="headerlink" title="失败的脚本"></a>失败的脚本</h2><p>如上面提到的，Shell脚本的返回码是最后一行命令的返回码。所以下面这个脚本在CI看起来其实是成功的：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br></pre></td></tr></table></figure>
+<p>而事实上<code>deploy_A_component.sh</code>的运行是失败的，所以你会看到一些奇怪的现象，那就是部署失败了，但是本次构建的状态却是绿的。所以这个脚本并没有遵守上面提到的CI脚本和CI之间的约定。</p>
+<h2 id="u6355_u6349_u9519_u8BEF_uFF01"><a href="#u6355_u6349_u9519_u8BEF_uFF01" class="headerlink" title="捕捉错误！"></a>捕捉错误！</h2><p>如何才能知道<code>sh deploy_A_component.sh</code>这一步是成功还是失败的？可以有很多种方法，最朴素的一种方法就是在脚本中判断它的返回码（当然前提是<code>deploy_A_component.sh</code>已经遵守了这个约定）。使用<code>$?</code>可以获取上一个运行的脚本的返回码，也就是这样：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="keyword">if</span> [ $? <span class="operator">-ne</span> <span class="number">0</span> ]; <span class="keyword">then</span></span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy fail!'</span></span><br><span class="line">	<span class="built_in">exit</span> <span class="number">1</span></span><br><span class="line"><span class="keyword">else</span> </span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure>
+<p>通过这种方式就可以对某一条特定命令的错误进行捕捉。但是如果每条语句都这么写，那也是挺大的工作量。</p>
+<p>还好Shell脚本提供了一种机制可以自动捕获每一行错误，那就是Shell Option。像下面这样：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh deploy_A_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br></pre></td></tr></table></figure>
+<p>其中<code>-e</code>表示<code>errexit</code>，即任何一条命令的返回码非零，则立即退出，且退出码即为执行错误的那条命令的返回码。这样世界就清净了，不需要再写茫茫多的<code>if [ $? -ne 0 ]</code>的判断了！</p>
+<h2 id="u5904_u7406_u4F8B_u5916"><a href="#u5904_u7406_u4F8B_u5916" class="headerlink" title="处理例外"></a>处理例外</h2><p><code>-e</code>虽然方便，但也有不方便的时候，比如下面这个例子：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
+<p>其实我的意图是无论<code>A</code>测试套件运行成功与否，都继续运行剩余的测试套件。但事实是任何一个套件运行失败，则脚本退出。在这个例子中能够看到<code>-e</code>的不便之处。</p>
+<p>那是不是就没法愉快地使用<code>-e</code>了呢，其实也不然。因为<code>errexit</code>是以一条语句为单位进行判定的，所以可以使用下面的形式来避免脚本的提前退出：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh || <span class="built_in">echo</span> <span class="string">'test suite A falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh || <span class="built_in">echo</span> <span class="string">'test suite B falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh || <span class="built_in">echo</span> <span class="string">'test suite C falis'</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>其中<code>||</code>的效果是，如果前面<code>sh test_suite_A.sh</code>的返回码非零，则会执行<code>||</code>后面的语句，但整个<code>sh test_suite_A.sh || echo &#39;test suite A falis&#39;</code>的返回码是<code>echo</code>语句的返回码，也就是0。将这种方式和<code>set -e</code>结合在一起使用，就可以对某些预料之内的错误返回码进行例外处理，同时还享受<code>set -e</code>带给你的自动错误捕获。</p>
+<h2 id="u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6"><a href="#u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6" class="headerlink" title="显式化运行进度"></a>显式化运行进度</h2><p>你可能见过这样的脚本：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_A.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_B.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_C.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
+<p>其目的是显式化脚本运行的进度，这样就可以很容易通过脚本运行的log来判断出在哪里出了错。但每条语句都这么写也未免太繁琐了。</p>
+<p>另一个Shell的Option可以帮到你，那就是<code>-v</code>，加了这个Option之后，每条运行的语句都会先输出到屏幕上，然后再执行。</p>
+<p><code>-x</code>与<code>-v</code>类似，其差别在于如果你的命令中包含变量，<code>-x</code>会将这个变量用真实的值替换掉，比如：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> -x</span><br><span class="line"></span><br><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$DIR</span></span><br></pre></td></tr></table></figure>
+<p>这个脚本的输出就是：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> /home/admin/</span><br></pre></td></tr></table></figure>
+<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>使用<code>set -v</code>来保证错误真正能够报告给CI，使用<code>set -e</code>来可视化运行的进度。当然你可以直接使用<code>set -ev</code>来两者皆得。同时使用相应的手段来处理例外。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/编写CI脚本的一些小tip/" data-id="cip9fu4cj0001hn8z7phpmyds" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-更稳定和更表意的代码" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/06/10/更稳定和更表意的代码/" class="article-date">
+  <time datetime="2016-06-10T08:13:55.000Z" itemprop="datePublished">2016-06-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/06/10/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>几天前在一次代码走查中就一段代码（示例代码）展开了讨论。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">user</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(user.name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在上面这段代码中，<code>user.name</code>是<code>user</code>这个入参唯一被使用的地方。所以一位同学的意见是：</p>
+<blockquote>
+<p>既然唯一使用user的地方只是使用了它的name属性，那么为什么不减少函数对外的依赖，把入参改成name？</p>
+</blockquote>
+<p>也就是下面这个样子：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">name</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>而我是不赞同这么改的，当时因为时间比较晚了，也没有花太多时间详细讨论。现在终于腾出点时间来，还是应该好好讨论一下。上述修改方式的初衷是减少依赖。然而在我看来这么改其实并没有减少依赖，只是依赖的东西变了，原来依赖于<code>用户</code>这个概念，现在依赖于用户的一个属性。所以依赖并没有减少，那么我们再来看看关于依赖的另一个很重要的概念：稳定性。</p>
+<h2 id="u4F9D_u8D56_u7684_u7A33_u5B9A_u6027"><a href="#u4F9D_u8D56_u7684_u7A33_u5B9A_u6027" class="headerlink" title="依赖的稳定性"></a>依赖的稳定性</h2><p>依赖不可避免，如果你的软件的所有组件都是完全分离开来，互相不调用，那么相信这个软件也是完全没用的。然而有依赖就会产生耦合。我们不希望被依赖方一修改，依赖方就要进行相应修改，所以我们希望这个依赖是 <strong>稳定的</strong>。</p>
+<p>从这个角度再来审视一下上述的修改。现在<code>userAddedNotification</code>函数使用的是<code>user</code>的<code>name</code>属性来拼装一个字符串消息，并发送出去。那么这个函数的实现是否可能会修改呢？从其字面意思来这个函数要做的事情是对<strong>添加用户</strong>这个事件进行响应，那么这个响应就很有可能不仅仅是发一条文字消息，也有可能会在数据库中插入一条记录，为了保证可追溯性，就会将<code>user</code>的<code>id</code>也保存在数据库中。所以传<code>user</code>作为参数是更合理的。</p>
+<p>即使不考虑未来的需求，使用<code>user.name</code>这个字段也只是<code>userAddedNotification</code>这个函数的实现细节，传<code>name</code>作为参数就逼迫着用户去了解你使用了<code>name</code>字段的这个细节。而这恰恰是用户没必要去了解的。</p>
+<p>依赖的稳定性很重要，它会大大减少维护软件的成本。而上述修改还有一个很明显的问题，那就是代码的表意性。</p>
+<h2 id="u4EE3_u7801_u7684_u8868_u610F_u6027"><a href="#u4EE3_u7801_u7684_u8868_u610F_u6027" class="headerlink" title="代码的表意性"></a>代码的表意性</h2><p>代码写出来是给人看的，所以表意性很重要。既然函数名是说用户被添加了，那么不应该理所当然的把一个用户作为参数传进去吗？</p>
+<p>再看两个例子：</p>
+<h3 id="ActiveRecord"><a href="#ActiveRecord" class="headerlink" title="ActiveRecord"></a>ActiveRecord</h3><p><code>Rails</code>的<code>ActiveRecord</code>实现从<code>API</code>友好角度来看无疑是所有ORM里面做的最好的，没有之一。举个经典的例子：<code>Post</code>和<code>Comment</code>的关系。一个篇<code>Post</code>会有多个<code>Comment</code>，则在数据库的<code>comments</code>表中会存在一个字段叫做<code>post_id</code>，来和某个<code>post</code>的记录关联起来。但是作为上层用户，我们不希望了解这些细节，不管你底层用来进行关联的字段是<code>post_id</code>，<code>postId</code>，还是<code>postID</code>，我都统统不关心，我只希望能够通过这样的API来操作它们之间的关联：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">comment = <span class="constant">Comment</span>.new</span><br><span class="line">post = <span class="constant">Post</span>.find_by_title(<span class="string">'title'</span>)</span><br><span class="line">comment.post = post</span><br></pre></td></tr></table></figure>
+<p>在上述代码的第三行中，它进行的本质操作其实是<code>comment.post_id = post.id</code>，也就是说我需要的只是<code>post</code>的<code>id</code>字段，那么你喜欢<code>comment.post = post</code>还是<code>comment.post_id = post.id</code>呢？</p>
+<h3 id="Six"><a href="#Six" class="headerlink" title="Six"></a>Six</h3><p><a href="https://github.com/randx/six" target="_blank" rel="external">Six</a>是一个用来做权限控制的库，使用它可以写出这样的代码：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, <span class="symbol">:push_code</span>, project)</span><br></pre></td></tr></table></figure>
+<p>其中<code>current_user</code>知道自己在<code>project</code>上的角色，所以你可以想象这个<code>can?</code>函数的底层实现肯定就是先找到<code>current_user</code>在<code>project</code>上的角色，然后再看看这个角色是否能够进行<code>push_code</code>这个操作。底层的细节可能会更加复杂，但我是不需要关心这些的。我只关心<strong>这个人</strong>是否能够做<strong>这件事情</strong>。所以对比一下，你是否会喜欢下面的代码？</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), <span class="symbol">:push_code</span>)</span><br></pre></td></tr></table></figure>
+<p>反正我是不喜欢，即繁琐，又不够表意。</p>
+<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/更稳定和更表意的代码/" data-id="cip9fu4cl0002hn8zlrzsvf5v" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-在Procfile中小心使用PORT这个环境变量" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/" class="article-date">
+  <time datetime="2016-06-10T08:13:33.000Z" itemprop="datePublished">2016-06-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="u4E8B_u7531"><a href="#u4E8B_u7531" class="headerlink" title="事由"></a>事由</h2><p>最近工作的gitlab的代码库上，它使用<code>foreman</code>来管理web进程和后台任务进程，其中启动web进程的命令如下：</p>
+<p><code>web: bundle exec unicorn_rails -p ${PORT:=&quot;3000&quot;} -E ${RAILS_ENV:=&quot;development&quot;} -c ${UNICORN_CONFIG:=&quot;config/unicorn.rb&quot;}</code></p>
+<p>命令看起来（事实证明也仅仅是看起来。。。）很明白，<code>-p</code>和<code>-E</code>的默认值分别是<code>3000</code>和<code>development</code>，如果需要覆盖则指定<code>PORT</code>和<code>RAILS_ENV</code>这两个环境变量即可。</p>
+<p>默认情况下使用<code>foreman start</code>这个命令，当我想用<code>4000</code>，而不是<code>3000</code>来启动<code>unicorn</code>时，使用如下命令<code>PORT=4000 foreman start</code>来进行启动，然后期望它乖乖地在<code>4000</code>上启动。出现一个：</p>
+<p><code>listening on addr=0.0.0.0:4000</code></p>
+<p>但事实看到的还是：</p>
+<p><code>listening on addr=0.0.0.0:3000</code></p>
+<p>查了半天也没什么头绪，<code>3000</code>这个幽灵一直阴魂不散。然后就在gitlab的整个代码库中搜索<code>3000</code>这个字样，然后在600多个搜索结果中发现了<code>.foreman</code>这个文件。其中有这么一行：</p>
+<p><code>port: 3000</code></p>
+<p>咦？会是这个问题吗，不过这个是小写的<code>port</code>呀，为什么会影响到那个<code>PORT</code>的环境变量呢？如果不想知道中间的探寻过程，可以直接跳到下面的结论部分。</p>
+<h2 id="u63A2_u5BFB"><a href="#u63A2_u5BFB" class="headerlink" title="探寻"></a>探寻</h2><p>粗略地查了查<code>foreman</code>的<a href="https://github.com/ddollar/foreman/wiki" target="_blank" rel="external">wiki</a>，发现并没有涉及到这个资料。然后再看看<code>foreman</code>的源码，在<code>cli.rb</code>这个文件中发现了这么一行：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults = <span class="constant">::YAML::</span>load_file(<span class="string">".foreman"</span>) || &#123;&#125;</span><br></pre></td></tr></table></figure>
+<p>嗯，看起来<code>foreman</code>确实读了这个文件，然后把它放到了<code>engine.rb</code>的<code>base_port</code>这个方法中供别人调用：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">base_port</span></span></span><br><span class="line">	(options[<span class="symbol">:port</span>] || env[<span class="string">"PORT"</span>] || <span class="constant">ENV</span>[<span class="string">"PORT"</span>] || <span class="number">5000</span>).to_i</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>那这个<code>base_port</code>是个啥呢，其实就是如果你不想给<code>Procfile</code>中定义的那些任务分配端口的话，它就会从这个<code>base_port</code>开始100、100的往上加，并分配给这些进程。但是每个进程使用端口的方式是不一样的，那通过什么方式把这个端口分配给大家呢？答案就是，<code>PORT</code>这个环境变量。。。</p>
+<p>所以说<code>-p ${PORT:=&quot;3000”}</code>中的这个默认的<code>3000</code>其实永远都不会发生作用，如果你不通过任何形式指定<code>PORT</code>，那么默认值就是从<code>5000</code>这个<code>base_port</code>算出来的一个值。但这个值也可以通过命令行指定，即<code>-p</code>。还有一种方式就是那个<code>.foreman</code>文件了。</p>
+<p>看下面这个例子：<br>对于这样的<code>Procfile</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a: echo $&#123;PORT&#125;&#10;b: echo $&#123;PORT&#125;&#10;c: echo $&#123;PORT&#125;&#10;d: echo $&#123;PORT&#125;</span><br></pre></td></tr></table></figure>
+<p>在上述的那个<code>.foreman</code>文件存在的时候，运行<code>foreman start</code>看到的结果会是这样：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 3000&#10;11:46:12 b.1    | 3100&#10;11:46:12 c.1    | 3200&#10;11:46:12 d.1    | 3300</span><br></pre></td></tr></table></figure>
+<p>无论上述的那个<code>.foreman</code>文件存在与否，运行<code>foreman start -p 4000</code>看到的结果会是这样：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 4000&#10;11:46:12 b.1    | 4100&#10;11:46:12 c.1    | 4200&#10;11:46:12 d.1    | 4300</span><br></pre></td></tr></table></figure>
+<h2 id="u7ED3_u8BBA"><a href="#u7ED3_u8BBA" class="headerlink" title="结论"></a>结论</h2><p>对于上面那个例子，详细来讲就是，使用<code>PORT=xxx foreman start</code>这种形式永远都不会发生作用。至于剩下的情况：</p>
+<ul>
+<li>不存在<code>.foreman</code>文件，或者文件中不存在<code>port</code>值，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>5000</code>（<code>foreman</code>源码中写死的值）</li>
+<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>4001</code></li>
+<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start -p 4002</code>时，<code>PORT</code>的值就是<code>4002</code>。也就是说<code>-p</code>的优先级会大于<code>.foreman</code>文件</li>
+</ul>
+<p>这里的<code>PORT</code>没法发生作用的原因是因为它跟<code>foreman</code>的保留环境变量冲突了，那么这种冲突的环境变量还有谁呢？从代码来看，应该就只有<code>PORT</code>和<code>PS</code>两个，要小心它们！至于PS的内容是什么，你不妨自己试试看：）</p>
+<p>话说gitlab在<code>Procfile</code>中这么写还真是挺误导人的，鄙视一下。。。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/在Procfile中小心使用PORT这个环境变量/" data-id="cip9fu4cn0003hn8zssfk2g1g" class="article-share-link">Share</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-使用pushState和replaceState构建应用" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/06/10/使用pushState和replaceState构建应用/" class="article-date">
+  <time datetime="2016-06-10T08:13:01.000Z" itemprop="datePublished">2016-06-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/06/10/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
     </h1>
   
 
@@ -100,17 +395,17 @@
 </ol>
 <p>接下来我们来看看<code>pushState</code>和<code>replaceState</code>这两个接口能够做什么，及如何使用它们达到上述的效果。</p>
 <h2 id="u63A5_u53E3_u8BE6_u89E3"><a href="#u63A5_u53E3_u8BE6_u89E3" class="headerlink" title="接口详解"></a>接口详解</h2><h3 id="pushState"><a href="#pushState" class="headerlink" title="pushState"></a>pushState</h3><p>其接口形式为：</p>
-<p><code>window.history.pushState(state, title, url)</code></p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">window</span>.history.pushState(state, title, url)</span><br></pre></td></tr></table></figure>
 <ol>
 <li>把<code>url</code>压入浏览器历史。</li>
-<li><p>在把<code>url</code>压入浏览器历史的同时，会把第一个参数<code>state</code>和<code>url</code>关联起来。在将来的某个时刻，当浏览器回退到<code>url</code>时，会触发<code>window.onpopstate</code>事件，并把该<code>state</code>传给处理函数。具体的形式如下</p>
- <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">window.onpopstate = function(event) &#123;&#10;&#9;//event.state&#10;&#125;</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>把当前浏览器的<code>url</code>改成第三个参数<code>url</code>。</p>
-</li>
+<li>在把<code>url</code>压入浏览器历史的同时，会把第一个参数<code>state</code>和<code>url</code>关联起来。在将来的某个时刻，当浏览器回退到<code>url</code>时，会触发<code>window.onpopstate</code>事件，并把该<code>state</code>传给处理函数。具体的形式如下</li>
+</ol>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">window</span>.onpopstate = <span class="function"><span class="keyword">function</span>(<span class="params">event</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//event.state</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>把当前浏览器的<code>url</code>改成第三个参数<code>url</code>。</li>
 </ol>
 <h3 id="replaceState"><a href="#replaceState" class="headerlink" title="replaceState"></a>replaceState</h3><p>其接口形式为：</p>
-<p><code>window.history.replaceState(state, title, url)</code></p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">window</span>.history.replaceState(state, title, url)</span><br></pre></td></tr></table></figure>
 <p>假设执行该函数之前浏览器地址栏的<code>url</code>是<code>oldUrl</code>，则它做的事情是：</p>
 <ol>
 <li>把当前<code>oldUrl</code>从浏览器历史中清除掉。也就是说你再也无法通过浏览器回退按钮回到<code>oldUrl</code>。</li>
@@ -119,232 +414,29 @@
 <p>好了，接口就是这样。看起来很简单，而且离我们的需求还是很远，是吗？没错，因为还需要<code>ajax</code>。</p>
 <h2 id="u7ED3_u5408ajax_u5B9E_u73B0_u4E0A_u8FF0_u9700_u6C42"><a href="#u7ED3_u5408ajax_u5B9E_u73B0_u4E0A_u8FF0_u9700_u6C42" class="headerlink" title="结合ajax实现上述需求"></a>结合ajax实现上述需求</h2><p>假设我们有这样一个应用。它包含<code>header</code>、<code>sidebar</code>和主内容区域。<code>sidebar</code>中包括“首页”、“个人中心”、“最新内容”等导航链接。点击<code>sidebar</code>相应的链接后，在主内容区域会显示相应的内容。</p>
 <p>首先要保证主内容区域是异步加载的，即页面只加载<code>header</code>和<code>sidebar</code>的部分。页面加载完成之后再通过<code>ajax</code>加载内容部分。如下所示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(function() &#123;&#10;    $.get(&#39;/homePageContent&#39;).done(function (data) &#123;&#10;        $(&#39;.content-container&#39;).html(data);&#10;    &#125;);&#10;&#125;);</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">    $.get(<span class="string">'/homePageContent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">        $(<span class="string">'.content-container'</span>).html(data);</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
 <p>点击“个人中心”的事件就是：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(&#39;.profie-link&#39;).click(function () &#123;&#10;    $.get(&#39;/profilePageConent&#39;).done(function (data) &#123;&#10;        $(&#39;.content-container&#39;).html(data);&#10;        window.history.pushState(&#123;pageName: &#39;profile&#39;&#125;, null, &#39;/profile&#39;);&#10;    &#125;)&#10;&#125;);</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="string">'.profie-link'</span>).click(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    $.get(<span class="string">'/profilePageConent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">        $(<span class="string">'.content-container'</span>).html(data);</span><br><span class="line">        <span class="built_in">window</span>.history.pushState(&#123;pageName: <span class="string">'profile'</span>&#125;, <span class="literal">null</span>, <span class="string">'/profile'</span>);</span><br><span class="line">    &#125;)</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
 <p>这里调用了<code>pushState</code>把当前浏览器<code>url</code>改成了<code>/profile</code>，并且把<code>{pageName: &#39;profile&#39;}</code>这个object和<code>/profile</code>这个url关联起来。所以将来当浏览器回退到<code>/profile</code>这个<code>url</code>时，<code>window.onpopstate</code>事件就会被触发，所以我们需要这样的处理函数：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">  window.onpopstate = function(event) &#123;&#10;$.get(&#39;/&#39; + event.state.pageName + &#39;PageContent&#39;).done(function (data) &#123;&#10;          $(&#39;.content-container&#39;).html(data);&#10;      &#125;)&#10;  &#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">  <span class="built_in">window</span>.onpopstate = <span class="function"><span class="keyword">function</span>(<span class="params">event</span>) </span>&#123;</span><br><span class="line">$.get(<span class="string">'/'</span> + event.state.pageName + <span class="string">'PageContent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">          $(<span class="string">'.content-container'</span>).html(data);</span><br><span class="line">      &#125;)</span><br><span class="line">  &#125;</span><br></pre></td></tr></table></figure>
 <p>你应该能够看出来，如果通过<code>ajax</code>，请求不同页面内容的<code>url</code>都是<code>/xxxPageContent</code>这种形式的话，则这个<code>onpopstate</code>处理函数其实已经能够处理回退到所有页面的事件了，</p>
 <p>现在你已经看到了两种进入“个人中心”页面的方式：通过点击链接和通过回退。但事实上还有第三个入口，那就是直接在浏览器里面敲入<code>/profile</code>这个url。这种情况下怎么处理呢？你需要一段这样的代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(function() &#123;&#10;&#9;$.get(&#39;/profilePageConent&#39;).done(function (data) &#123;&#10;&#9;    $(&#39;.content-container&#39;).html(data);&#10;&#9;&#125;);&#10;&#125;</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	$.get(<span class="string">'/profilePageConent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">	    $(<span class="string">'.content-container'</span>).html(data);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 <p>这段代码和上述加载首页的代码基本一样。那么问题来了，在页面加载完毕时，我到底应该从<code>/homePageConent</code>还是<code>/profilePageConent</code>获取数据，并把它渲染到<code>$(&#39;.content-container&#39;)</code>中呢？显然这取决于当前的页面是什么，那么如何知道当前是哪个页面呢？一种方式是从当前<code>url</code>的<code>path</code>、<code>query</code>或者<code>hash</code>中获取，另一种就是在后台渲染页面时候，在页面中添加一个不可见<code>input</code>，其中的值就是当前页面信息。比如：</p>
-<p><code>&lt;input type=&#39;hidden&#39; id=&#39;pageName&#39; value=&#39;profile&#39;&gt;</code></p>
+<figure class="highlight html"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="title">input</span> <span class="attribute">type</span>=<span class="value">'hidden'</span> <span class="attribute">id</span>=<span class="value">'pageName'</span> <span class="attribute">value</span>=<span class="value">'profile'</span>&gt;</span></span><br></pre></td></tr></table></figure>
 <p>本例中我们采取第二种方法，所以加载内容的代码就变成了：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(function() &#123;&#10;&#9;$.get(&#9;&#39;/&#39; + $(&#39;#pageName&#39;).val() + &#39;PageContent&#39;).done(function (data) &#123;&#10;&#9;    $(&#39;.content-container&#39;).html(data);&#10;&#9;&#125;);&#10;&#125;</span><br></pre></td></tr></table></figure>
-<p>通过这段代码就可以处理所有的页面的通过url直接加载的情况。</p>
-<p>至此我们处理了一个页面加载的三种情况：</p>
-<ol>
-<li>直接打开</li>
-<li>通过链接进入</li>
-<li>通过浏览器回退进入</li>
-</ol>
-<p>完整的代码如下：</p>
-<p><code>sidebar</code>部分的html：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#60;ul&#62;&#10;    &#60;li class=&#34;sidebar-link&#34; data-page-name=&#34;home&#34;&#62;&#39318;&#39029;&#60;/li&#62;&#10;    &#60;li class=&#34;sidebar-link&#34; data-page-name=&#34;profile&#34;&#62;&#20010;&#20154;&#20013;&#24515;&#60;/li&#62;&#10;    &#60;li class=&#34;sidebar-link&#34; data-page-name=&#34;news&#34;&#62;&#26368;&#26032;&#20869;&#23481;&#60;/li&#62;&#10;&#60;/ul&#62;</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="function"><span class="keyword">function</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">	$.get(	<span class="string">'/'</span> + $(<span class="string">'#pageName'</span>).val() + <span class="string">'PageContent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">	    $(<span class="string">'.content-container'</span>).html(data);</span><br><span class="line">	&#125;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="string">``</span><span class="string">` </span><br><span class="line"></span><br><span class="line">通过这段代码就可以处理所有的页面的通过url直接加载的情况。</span><br><span class="line"></span><br><span class="line">至此我们处理了一个页面加载的三种情况：</span><br><span class="line"></span><br><span class="line">1. 直接打开</span><br><span class="line">2. 通过链接进入</span><br><span class="line">3. 通过浏览器回退进入</span><br><span class="line"></span><br><span class="line">完整的代码如下：</span><br><span class="line"></span><br><span class="line">`</span>sidebar<span class="string">`部分的html：</span><br><span class="line"></span><br><span class="line">`</span><span class="string">``</span> html</span><br><span class="line">&lt;ul&gt;</span><br><span class="line">    <span class="xml"><span class="tag">&lt;<span class="title">li</span> <span class="attribute">class</span>=<span class="value">"sidebar-link"</span> <span class="attribute">data-page-name</span>=<span class="value">"home"</span>&gt;</span>首页<span class="tag">&lt;/<span class="title">li</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="title">li</span> <span class="attribute">class</span>=<span class="value">"sidebar-link"</span> <span class="attribute">data-page-name</span>=<span class="value">"profile"</span>&gt;</span>个人中心<span class="tag">&lt;/<span class="title">li</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="title">li</span> <span class="attribute">class</span>=<span class="value">"sidebar-link"</span> <span class="attribute">data-page-name</span>=<span class="value">"news"</span>&gt;</span>最新内容<span class="tag">&lt;/<span class="title">li</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="title">ul</span>&gt;</span></span></span><br></pre></td></tr></table></figure>
 <p>js代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(function () &#123;&#10;    const $container = $(&#39;.content-container&#39;);&#10;&#10;    $(&#39;.sidebar-link&#39;).click(function () &#123;&#10;        const pageName = $(this).data(&#39;page-name&#39;);&#10;        const contentAjaxUrl = &#39;/&#39; + pageName + &#39;PageContent&#39;;&#10;        const pageUrl = &#39;/&#39; + pageName;&#10;&#10;        $.get(contentAjaxUrl).done(function (data) &#123;&#10;            $container.html(data);&#10;            window.history.pushState(&#123;pageName: pageName&#125;, null, pageUrl);&#10;        &#125;)&#10;    &#125;);&#10;&#10;    $.get(&#39;/&#39; + $(&#39;#pageName&#39;).val() + &#39;PageContent&#39;).done(function (data) &#123;&#10;        $container.html(data);&#10;    &#125;);&#10;&#10;    window.onpopstate = function(event) &#123;&#10;        $.get(&#39;/&#39; + event.state.pageName + &#39;PageContent&#39;).done(function (data) &#123;&#10;            $container.html(data);&#10;        &#125;)&#10;    &#125;&#10;&#125;);</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">const</span> $container = $(<span class="string">'.content-container'</span>);</span><br><span class="line"></span><br><span class="line">    $(<span class="string">'.sidebar-link'</span>).click(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">const</span> pageName = $(<span class="keyword">this</span>).data(<span class="string">'page-name'</span>);</span><br><span class="line">        <span class="keyword">const</span> contentAjaxUrl = <span class="string">'/'</span> + pageName + <span class="string">'PageContent'</span>;</span><br><span class="line">        <span class="keyword">const</span> pageUrl = <span class="string">'/'</span> + pageName;</span><br><span class="line"></span><br><span class="line">        $.get(contentAjaxUrl).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">            $container.html(data);</span><br><span class="line">            <span class="built_in">window</span>.history.pushState(&#123;pageName: pageName&#125;, <span class="literal">null</span>, pageUrl);</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    $.get(<span class="string">'/'</span> + $(<span class="string">'#pageName'</span>).val() + <span class="string">'PageContent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">        $container.html(data);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">window</span>.onpopstate = <span class="function"><span class="keyword">function</span>(<span class="params">event</span>) </span>&#123;</span><br><span class="line">        $.get(<span class="string">'/'</span> + event.state.pageName + <span class="string">'PageContent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">            $container.html(data);</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
 <p>现在这个代码基本可用了。但是这里面有个<code>bug</code>。那就是当回退到直接通过<code>url</code>打开的页面时，也会触发<code>onpopstate</code>事件，但此时的<code>event.state</code>是<code>null</code>，因为我第一次调用<code>history.pushState</code>时就已经是在对第二个页面进行处理。所以这里缺失了对第一个页面的处理，而对第一个页面的处理就要用到<code>replaceState</code>这个方法了。所以代码改为：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$(function () &#123;&#10;    const $container = $(&#39;.content-container&#39;);&#10;&#10;    $(&#39;.sidebar-link&#39;).click(function () &#123;&#10;        const pageName = $(this).data(&#39;page-name&#39;);&#10;        const contentAjaxUrl = &#39;/&#39; + pageName + &#39;PageContent&#39;;&#10;        const pageUrl = &#39;/&#39; + pageName;&#10;&#10;        $.get(contentAjaxUrl).done(function (data) &#123;&#10;            $container.html(data);&#10;            window.history.pushState(&#123;pageName: pageName&#125;, null, pageUrl);&#10;        &#125;)&#10;    &#125;);&#10;&#10;    const pageName = $(&#39;#pageName&#39;).val();&#10;    $.get(&#9;&#39;/&#39; + pageName + &#39;PageContent&#39;).done(function (data) &#123;&#10;        $container.html(data);&#10;        window.history.replaceState(&#123;pageName: pageName&#125;, null, &#39;/&#39; + pageName);&#10;    &#125;);&#10;&#10;    window.onpopstate = function(event) &#123;&#10;        $.get(&#39;/&#39; + event.state.pageName + &#39;PageContent&#39;).done(function (data) &#123;&#10;            $container.html(data);&#10;        &#125;)&#10;    &#125;&#10;&#125;);</span><br></pre></td></tr></table></figure>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">$(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">const</span> $container = $(<span class="string">'.content-container'</span>);</span><br><span class="line"></span><br><span class="line">    $(<span class="string">'.sidebar-link'</span>).click(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">const</span> pageName = $(<span class="keyword">this</span>).data(<span class="string">'page-name'</span>);</span><br><span class="line">        <span class="keyword">const</span> contentAjaxUrl = <span class="string">'/'</span> + pageName + <span class="string">'PageContent'</span>;</span><br><span class="line">        <span class="keyword">const</span> pageUrl = <span class="string">'/'</span> + pageName;</span><br><span class="line"></span><br><span class="line">        $.get(contentAjaxUrl).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">            $container.html(data);</span><br><span class="line">            <span class="built_in">window</span>.history.pushState(&#123;pageName: pageName&#125;, <span class="literal">null</span>, pageUrl);</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">const</span> pageName = $(<span class="string">'#pageName'</span>).val();</span><br><span class="line">    $.get(	<span class="string">'/'</span> + pageName + <span class="string">'PageContent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">        $container.html(data);</span><br><span class="line">        <span class="built_in">window</span>.history.replaceState(&#123;pageName: pageName&#125;, <span class="literal">null</span>, <span class="string">'/'</span> + pageName);</span><br><span class="line">    &#125;);</span><br><span class="line"></span><br><span class="line">    <span class="built_in">window</span>.onpopstate = <span class="function"><span class="keyword">function</span>(<span class="params">event</span>) </span>&#123;</span><br><span class="line">        $.get(<span class="string">'/'</span> + event.state.pageName + <span class="string">'PageContent'</span>).done(<span class="function"><span class="keyword">function</span> (<span class="params">data</span>) </span>&#123;</span><br><span class="line">            $container.html(data);</span><br><span class="line">        &#125;)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;);</span><br></pre></td></tr></table></figure>
 <h2 id="u603B_u7ED3"><a href="#u603B_u7ED3" class="headerlink" title="总结"></a>总结</h2><p>这种<code>pushState</code>加<code>ajax</code>的方式也叫做<code>pajax</code>。使用这种方式，可以得到<code>ajax</code>的好处。而且避免了<code>ajax</code>的那些问题。</p>
 <p>使用<code>pajax</code>时要非常注意的一点就是：对进入每个页面的三种形式（直接打开、通过链接进入、通过浏览器回退进入）进行合适的处理。</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/04/24/使用pushState和replaceState构建应用/" data-id="cine5kdak0000rk8z7hnrnctk" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-编写CI脚本的一些小tip" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/02/07/编写CI脚本的一些小tip/" class="article-date">
-  <time datetime="2016-02-07T04:41:48.000Z" itemprop="datePublished">2016-02-07</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/02/07/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A"><a href="#CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A" class="headerlink" title="CI脚本与CI之间的约定"></a>CI脚本与CI之间的约定</h2><p>CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果脚本中的最后一行如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">exit 1</span><br></pre></td></tr></table></figure>
-<p>则脚本返回码就是1。</p>
-<p>如果脚本中的最后一行是调用另外一个Shell脚本或者Ruby、Python等任何脚本，比如下面这两种情况：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh another_shell.sh</span><br></pre></td></tr></table></figure>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ruby script.rb</span><br></pre></td></tr></table></figure>
-<p>则整个脚本的返回码就是运行<code>another_shell.sh</code>或者<code>script.rb</code>的返回码。</p>
-<h2 id="u5931_u8D25_u7684_u811A_u672C"><a href="#u5931_u8D25_u7684_u811A_u672C" class="headerlink" title="失败的脚本"></a>失败的脚本</h2><p>如上面提到的，Shell脚本的返回码是最后一行命令的返回码。所以下面这个脚本在CI看起来其实是成功的：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh #&#36825;&#34892;&#26159;&#25191;&#34892;&#22833;&#36133;&#30340;&#10;echo &#39;deploy A successfully&#39;</span><br></pre></td></tr></table></figure>
-<p>而事实上<code>deploy_A_component.sh</code>的运行是失败的，所以你会看到一些奇怪的现象，那就是部署失败了，但是本次构建的状态却是绿的。所以这个脚本并没有遵守上面提到的CI脚本和CI之间的约定。</p>
-<h2 id="u6355_u6349_u9519_u8BEF_uFF01"><a href="#u6355_u6349_u9519_u8BEF_uFF01" class="headerlink" title="捕捉错误！"></a>捕捉错误！</h2><p>如何才能知道<code>sh deploy_A_component.sh</code>这一步是成功还是失败的？可以有很多种方法，最朴素的一种方法就是在脚本中判断它的返回码（当然前提是<code>deploy_A_component.sh</code>已经遵守了这个约定）。使用<code>$?</code>可以获取上一个运行的脚本的返回码，也就是这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh #&#36825;&#34892;&#26159;&#25191;&#34892;&#22833;&#36133;&#30340;&#10;if [ $? -ne 0 ]; then&#10;&#9;echo &#39;deploy fail!&#39;&#10;&#9;exit 1&#10;else &#10;&#9;echo &#39;deploy A successfully&#39;&#10;fi</span><br></pre></td></tr></table></figure>
-<p>通过这种方式就可以对某一条特定命令的错误进行捕捉。但是如果每条语句都这么写，那也是挺大的工作量。</p>
-<p>还好Shell脚本提供了一种机制可以自动捕获每一行错误，那就是Shell Option。像下面这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -e&#10;&#10;sh deploy_A_component.sh&#10;sh deploy_B_component.sh&#10;sh deploy_B_component.sh</span><br></pre></td></tr></table></figure>
-<p>其中<code>-e</code>表示<code>errexit</code>，即任何一条命令的返回码非零，则立即退出，且退出码即为执行错误的那条命令的返回码。这样世界就清净了，不需要再写茫茫多的<code>if [ $? -ne 0 ]</code>的判断了！</p>
-<h2 id="u5904_u7406_u4F8B_u5916"><a href="#u5904_u7406_u4F8B_u5916" class="headerlink" title="处理例外"></a>处理例外</h2><p><code>-e</code>虽然方便，但也有不方便的时候，比如下面这个例子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -e&#10;&#10;sh test_suite_A.sh&#10;sh test_suite_B.sh&#10;sh test_suite_C.sh</span><br></pre></td></tr></table></figure>
-<p>其实我的意图是无论<code>A</code>测试套件运行成功与否，都继续运行剩余的测试套件。但事实是任何一个套件运行失败，则脚本退出。在这个例子中能够看到<code>-e</code>的不便之处。</p>
-<p>那是不是就没法愉快地使用<code>-e</code>了呢，其实也不然。因为<code>errexit</code>是以一条语句为单位进行判定的，所以可以使用下面的形式来避免脚本的提前退出：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -e&#10;&#10;...&#10;&#10;sh test_suite_A.sh || echo &#39;test suite A falis&#39;&#10;sh test_suite_B.sh || echo &#39;test suite B falis&#39;&#10;sh test_suite_C.sh || echo &#39;test suite C falis&#39;&#10;...</span><br></pre></td></tr></table></figure>
-<p>其中<code>||</code>的效果是，如果前面<code>sh test_suite_A.sh</code>的返回码非零，则会执行<code>||</code>后面的语句，但整个<code>sh test_suite_A.sh || echo &#39;test suite A falis&#39;</code>的返回码是<code>echo</code>语句的返回码，也就是0。将这种方式和<code>set -e</code>结合在一起使用，就可以对某些预料之内的错误返回码进行例外处理，同时还享受<code>set -e</code>带给你的自动错误捕获。</p>
-<h2 id="u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6"><a href="#u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6" class="headerlink" title="显式化运行进度"></a>显式化运行进度</h2><p>你可能见过这样的脚本：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo &#39;running test_suite_A.sh&#39;&#10;sh test_suite_A.sh&#10;echo &#39;running test_suite_B.sh&#39;&#10;sh test_suite_B.sh&#10;echo &#39;running test_suite_C.sh&#39;&#10;sh test_suite_C.sh</span><br></pre></td></tr></table></figure>
-<p>其目的是显式化脚本运行的进度，这样就可以很容易通过脚本运行的log来判断出在哪里出了错。但每条语句都这么写也未免太繁琐了。</p>
-<p>另一个Shell的Option可以帮到你，那就是<code>-v</code>，加了这个Option之后，每条运行的语句都会先输出到屏幕上，然后再执行。</p>
-<p><code>-x</code>与<code>-v</code>类似，其差别在于如果你的命令中包含变量，<code>-x</code>会将这个变量用真实的值替换掉，比如：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">set -x&#10;&#10;DIR=/home/admin/&#10;cd $DIR</span><br></pre></td></tr></table></figure>
-<p>这个脚本的输出就是：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DIR=/home/admin/&#10;cd /home/admin/</span><br></pre></td></tr></table></figure>
-<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>使用<code>set -v</code>来保证错误真正能够报告给CI，使用<code>set -e</code>来可视化运行的进度。当然你可以直接使用<code>set -ev</code>来两者皆得。同时使用相应的手段来处理例外。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/02/07/编写CI脚本的一些小tip/" data-id="cine5kdat0001rk8zfrjbqc6s" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-更稳定和更表意的代码" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/02/04/更稳定和更表意的代码/" class="article-date">
-  <time datetime="2016-02-04T03:25:43.000Z" itemprop="datePublished">2016-02-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/02/04/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>几天前在一次代码走查中就一段代码（示例代码）展开了讨论。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">function userAddedNotification(user) &#123;&#10;&#9;//....&#10;&#9;notifyAdmin(user.name + &#39; is added&#39;)&#10;&#9;//....&#10;&#125;</span><br></pre></td></tr></table></figure>
-<p>在上面这段代码中，<code>user.name</code>是<code>user</code>这个入参唯一被使用的地方。所以一位同学的意见是：</p>
-<blockquote>
-<p>既然唯一使用user的地方只是使用了它的name属性，那么为什么不减少函数对外的依赖，把入参改成name？</p>
-</blockquote>
-<p>也就是下面这个样子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">function userAddedNotification(name) &#123;&#10;&#9;//....&#10;&#9;notifyAdmin(name + &#39; is added&#39;)&#10;&#9;//....&#10;&#125;</span><br></pre></td></tr></table></figure>
-<p>而我是不赞同这么改的，当时因为时间比较晚了，也没有花太多时间详细讨论。现在终于腾出点时间来，还是应该好好讨论一下。上述修改方式的初衷是减少依赖。然而在我看来这么改其实并没有减少依赖，只是依赖的东西变了，原来依赖于<code>用户</code>这个概念，现在依赖于用户的一个属性。所以依赖并没有减少，那么我们再来看看关于依赖的另一个很重要的概念：稳定性。</p>
-<h2 id="u4F9D_u8D56_u7684_u7A33_u5B9A_u6027"><a href="#u4F9D_u8D56_u7684_u7A33_u5B9A_u6027" class="headerlink" title="依赖的稳定性"></a>依赖的稳定性</h2><p>依赖不可避免，如果你的软件的所有组件都是完全分离开来，互相不调用，那么相信这个软件也是完全没用的。然而有依赖就会产生耦合。我们不希望被依赖方一修改，依赖方就要进行相应修改，所以我们希望这个依赖是 <strong>稳定的</strong>。</p>
-<p>从这个角度再来审视一下上述的修改。现在<code>userAddedNotification</code>函数使用的是<code>user</code>的<code>name</code>属性来拼装一个字符串消息，并发送出去。那么这个函数的实现是否可能会修改呢？从其字面意思来这个函数要做的事情是对<strong>添加用户</strong>这个事件进行响应，那么这个响应就很有可能不仅仅是发一条文字消息，也有可能会在数据库中插入一条记录，为了保证可追溯性，就会将<code>user</code>的<code>id</code>也保存在数据库中。所以传<code>user</code>作为参数是更合理的。</p>
-<p>即使不考虑未来的需求，使用<code>user.name</code>这个字段也只是<code>userAddedNotification</code>这个函数的实现细节，传<code>name</code>作为参数就逼迫着用户去了解你使用了<code>name</code>字段的这个细节。而这恰恰是用户没必要去了解的。</p>
-<p>依赖的稳定性很重要，它会大大减少维护软件的成本。而上述修改还有一个很明显的问题，那就是代码的表意性。</p>
-<h2 id="u4EE3_u7801_u7684_u8868_u610F_u6027"><a href="#u4EE3_u7801_u7684_u8868_u610F_u6027" class="headerlink" title="代码的表意性"></a>代码的表意性</h2><p>代码写出来是给人看的，所以表意性很重要。既然函数名是说用户被添加了，那么不应该理所当然的把一个用户作为参数传进去吗？</p>
-<p>再看两个例子：</p>
-<h3 id="ActiveRecord"><a href="#ActiveRecord" class="headerlink" title="ActiveRecord"></a>ActiveRecord</h3><p><code>Rails</code>的<code>ActiveRecord</code>实现从<code>API</code>友好角度来看无疑是所有ORM里面做的最好的，没有之一。举个经典的例子：<code>Post</code>和<code>Comment</code>的关系。一个篇<code>Post</code>会有多个<code>Comment</code>，则在数据库的<code>comments</code>表中会存在一个字段叫做<code>post_id</code>，来和某个<code>post</code>的记录关联起来。但是作为上层用户，我们不希望了解这些细节，不管你底层用来进行关联的字段是<code>post_id</code>，<code>postId</code>，还是<code>postID</code>，我都统统不关心，我只希望能够通过这样的API来操作它们之间的关联：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">comment = Comment.new&#10;post = Post.find_by_title(&#39;title&#39;)&#10;comment.post = post</span><br></pre></td></tr></table></figure>
-<p>在上述代码的第三行中，它进行的本质操作其实是<code>comment.post_id = post.id</code>，也就是说我需要的只是<code>post</code>的<code>id</code>字段，那么你喜欢<code>comment.post = post</code>还是<code>comment.post_id = post.id</code>呢？</p>
-<h3 id="Six"><a href="#Six" class="headerlink" title="Six"></a>Six</h3><p><a href="https://github.com/randx/six" target="_blank" rel="external">Six</a>是一个用来做权限控制的库，使用它可以写出这样的代码：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, :push_code, project)</span><br></pre></td></tr></table></figure>
-<p>其中<code>current_user</code>知道自己在<code>project</code>上的角色，所以你可以想象这个<code>can?</code>函数的底层实现肯定就是先找到<code>current_user</code>在<code>project</code>上的角色，然后再看看这个角色是否能够进行<code>push_code</code>这个操作。底层的细节可能会更加复杂，但我是不需要关心这些的。我只关心<strong>这个人</strong>是否能够做<strong>这件事情</strong>。所以对比一下，你是否会喜欢下面的代码？</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), :push_code)</span><br></pre></td></tr></table></figure>
-<p>反正我是不喜欢，即繁琐，又不够表意。</p>
-<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/" data-id="cine5kdb20002rk8z3t14h9us" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-在Procfile中小心使用PORT这个环境变量" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/" class="article-date">
-  <time datetime="2016-01-10T13:15:19.000Z" itemprop="datePublished">2016-01-10</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="u4E8B_u7531"><a href="#u4E8B_u7531" class="headerlink" title="事由"></a>事由</h2><p>最近工作的gitlab的代码库上，它使用<code>foreman</code>来管理web进程和后台任务进程，其中启动web进程的命令如下：</p>
-<p><code>web: bundle exec unicorn_rails -p ${PORT:=&quot;3000&quot;} -E ${RAILS_ENV:=&quot;development&quot;} -c ${UNICORN_CONFIG:=&quot;config/unicorn.rb&quot;}</code></p>
-<p>命令看起来（事实证明也仅仅是看起来。。。）很明白，<code>-p</code>和<code>-E</code>的默认值分别是<code>3000</code>和<code>development</code>，如果需要覆盖则指定<code>PORT</code>和<code>RAILS_ENV</code>这两个环境变量即可。</p>
-<p>默认情况下使用<code>foreman start</code>这个命令，当我想用<code>4000</code>，而不是<code>3000</code>来启动<code>unicorn</code>时，使用如下命令<code>PORT=4000 foreman start</code>来进行启动，然后期望它乖乖地在<code>4000</code>上启动。出现一个：</p>
-<p><code>listening on addr=0.0.0.0:4000</code></p>
-<p>但事实看到的还是：</p>
-<p><code>listening on addr=0.0.0.0:3000</code></p>
-<p>查了半天也没什么头绪，<code>3000</code>这个幽灵一直阴魂不散。然后就在gitlab的整个代码库中搜索<code>3000</code>这个字样，然后在600多个搜索结果中发现了<code>.foreman</code>这个文件。其中有这么一行：</p>
-<p><code>port: 3000</code></p>
-<p>咦？会是这个问题吗，不过这个是小写的<code>port</code>呀，为什么会影响到那个<code>PORT</code>的环境变量呢？如果不想知道中间的探寻过程，可以直接跳到下面的结论部分。</p>
-<h2 id="u63A2_u5BFB"><a href="#u63A2_u5BFB" class="headerlink" title="探寻"></a>探寻</h2><p>粗略地查了查<code>foreman</code>的<a href="https://github.com/ddollar/foreman/wiki" target="_blank" rel="external">wiki</a>，发现并没有涉及到这个资料。然后再看看<code>foreman</code>的源码，在<code>cli.rb</code>这个文件中发现了这么一行：</p>
-<p><code>defaults = ::YAML::load_file(&quot;.foreman&quot;) || {}</code></p>
-<p>嗯，看起来<code>foreman</code>确实读了这个文件，然后把它放到了<code>engine.rb</code>的<code>base_port</code>这个方法中供别人调用：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">def base_port&#10;&#9;(options[:port] || env[&#34;PORT&#34;] || ENV[&#34;PORT&#34;] || 5000).to_i&#10;end</span><br></pre></td></tr></table></figure>
-<p>那这个<code>base_port</code>是个啥呢，其实就是如果你不想给<code>Procfile</code>中定义的那些任务分配端口的话，它就会从这个<code>base_port</code>开始100、100的往上加，并分配给这些进程。但是每个进程使用端口的方式是不一样的，那通过什么方式把这个端口分配给大家呢？答案就是，<code>PORT</code>这个环境变量。。。</p>
-<p>所以说<code>-p ${PORT:=&quot;3000”}</code>中的这个默认的<code>3000</code>其实永远都不会发生作用，如果你不通过任何形式指定<code>PORT</code>，那么默认值就是从<code>5000</code>这个<code>base_port</code>算出来的一个值。但这个值也可以通过命令行指定，即<code>-p</code>。还有一种方式就是那个<code>.foreman</code>文件了。</p>
-<p>看下面这个例子：<br>对于这样的<code>Procfile</code>:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a: echo $&#123;PORT&#125;&#10;b: echo $&#123;PORT&#125;&#10;c: echo $&#123;PORT&#125;&#10;d: echo $&#123;PORT&#125;</span><br></pre></td></tr></table></figure>
-<p>在上述的那个<code>.foreman</code>文件存在的时候，运行<code>foreman start</code>看到的结果会是这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 3000&#10;11:46:12 b.1    | 3100&#10;11:46:12 c.1    | 3200&#10;11:46:12 d.1    | 3300</span><br></pre></td></tr></table></figure>
-<p>无论上述的那个<code>.foreman</code>文件存在与否，运行<code>foreman start -p 4000</code>看到的结果会是这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 4000&#10;11:46:12 b.1    | 4100&#10;11:46:12 c.1    | 4200&#10;11:46:12 d.1    | 4300</span><br></pre></td></tr></table></figure>
-<h2 id="u7ED3_u8BBA"><a href="#u7ED3_u8BBA" class="headerlink" title="结论"></a>结论</h2><p>对于上面那个例子，详细来讲就是，使用<code>PORT=xxx foreman start</code>这种形式永远都不会发生作用。至于剩下的情况：</p>
-<ul>
-<li>不存在<code>.foreman</code>文件，或者文件中不存在<code>port</code>值，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>5000</code>（<code>foreman</code>源码中写死的值）</li>
-<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>4001</code></li>
-<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start -p 4002</code>时，<code>PORT</code>的值就是<code>4002</code>。也就是说<code>-p</code>的优先级会大于<code>.foreman</code>文件</li>
-</ul>
-<p>这里的<code>PORT</code>没法发生作用的原因是因为它跟<code>foreman</code>的保留环境变量冲突了，那么这种冲突的环境变量还有谁呢？从代码来看，应该就只有<code>PORT</code>和<code>PS</code>两个，要小心它们！至于PS的内容是什么，你不妨自己试试看：）</p>
-<p>话说gitlab在<code>Procfile</code>中这么写还真是挺误导人的，鄙视一下。。。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/" data-id="cine5kdb50003rk8z1tnsim26" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/使用pushState和replaceState构建应用/" data-id="cip9fu4c40000hn8ztqcprj33" class="article-share-link">Share</a>
       
       
     </footer>
@@ -371,7 +463,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li></ul>
     </div>
   </div>
 
@@ -384,19 +476,23 @@
       <ul>
         
           <li>
-            <a href="/2016/04/24/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
+            <a href="/2016/06/10/前后端分离，JWT还是Cookie？/">前后端分离，JWT还是Cookie？</a>
           </li>
         
           <li>
-            <a href="/2016/02/07/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
+            <a href="/2016/06/10/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
           </li>
         
           <li>
-            <a href="/2016/02/04/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
+            <a href="/2016/06/10/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
           </li>
         
           <li>
-            <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+            <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+          </li>
+        
+          <li>
+            <a href="/2016/06/10/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
           </li>
         
       </ul>
