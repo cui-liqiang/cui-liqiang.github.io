@@ -65,7 +65,7 @@
     <article id="post-前后端分离，JWT还是Cookie？" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
     <a href="/2016/06/10/前后端分离，JWT还是Cookie？/" class="article-date">
-  <time datetime="2016-06-10T08:14:58.000Z" itemprop="datePublished">2016-06-10</time>
+  <time datetime="2016-06-10T08:00:00.000Z" itemprop="datePublished">2016-06-10</time>
 </a>
     
   </div>
@@ -154,200 +154,9 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/06/10/前后端分离，JWT还是Cookie？/" data-id="cip9fus0q0000ib8zhuzucl9c" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/06/10/前后端分离，JWT还是Cookie？/" data-id="cip9t22jc0004ew8zjumsyh6f" class="article-share-link">Share</a>
       
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-编写CI脚本的一些小tip" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/06/10/编写CI脚本的一些小tip/" class="article-date">
-  <time datetime="2016-06-10T08:14:44.000Z" itemprop="datePublished">2016-06-10</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/06/10/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A"><a href="#CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A" class="headerlink" title="CI脚本与CI之间的约定"></a>CI脚本与CI之间的约定</h2><p>CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果脚本中的最后一行如下：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">exit</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
-<p>则脚本返回码就是1。</p>
-<p>如果脚本中的最后一行是调用另外一个Shell脚本或者Ruby、Python等任何脚本，比如下面这两种情况：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh another_shell.sh</span><br></pre></td></tr></table></figure>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ruby script.rb</span><br></pre></td></tr></table></figure>
-<p>则整个脚本的返回码就是运行<code>another_shell.sh</code>或者<code>script.rb</code>的返回码。</p>
-<h2 id="u5931_u8D25_u7684_u811A_u672C"><a href="#u5931_u8D25_u7684_u811A_u672C" class="headerlink" title="失败的脚本"></a>失败的脚本</h2><p>如上面提到的，Shell脚本的返回码是最后一行命令的返回码。所以下面这个脚本在CI看起来其实是成功的：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br></pre></td></tr></table></figure>
-<p>而事实上<code>deploy_A_component.sh</code>的运行是失败的，所以你会看到一些奇怪的现象，那就是部署失败了，但是本次构建的状态却是绿的。所以这个脚本并没有遵守上面提到的CI脚本和CI之间的约定。</p>
-<h2 id="u6355_u6349_u9519_u8BEF_uFF01"><a href="#u6355_u6349_u9519_u8BEF_uFF01" class="headerlink" title="捕捉错误！"></a>捕捉错误！</h2><p>如何才能知道<code>sh deploy_A_component.sh</code>这一步是成功还是失败的？可以有很多种方法，最朴素的一种方法就是在脚本中判断它的返回码（当然前提是<code>deploy_A_component.sh</code>已经遵守了这个约定）。使用<code>$?</code>可以获取上一个运行的脚本的返回码，也就是这样：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="keyword">if</span> [ $? <span class="operator">-ne</span> <span class="number">0</span> ]; <span class="keyword">then</span></span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy fail!'</span></span><br><span class="line">	<span class="built_in">exit</span> <span class="number">1</span></span><br><span class="line"><span class="keyword">else</span> </span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure>
-<p>通过这种方式就可以对某一条特定命令的错误进行捕捉。但是如果每条语句都这么写，那也是挺大的工作量。</p>
-<p>还好Shell脚本提供了一种机制可以自动捕获每一行错误，那就是Shell Option。像下面这样：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh deploy_A_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br></pre></td></tr></table></figure>
-<p>其中<code>-e</code>表示<code>errexit</code>，即任何一条命令的返回码非零，则立即退出，且退出码即为执行错误的那条命令的返回码。这样世界就清净了，不需要再写茫茫多的<code>if [ $? -ne 0 ]</code>的判断了！</p>
-<h2 id="u5904_u7406_u4F8B_u5916"><a href="#u5904_u7406_u4F8B_u5916" class="headerlink" title="处理例外"></a>处理例外</h2><p><code>-e</code>虽然方便，但也有不方便的时候，比如下面这个例子：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
-<p>其实我的意图是无论<code>A</code>测试套件运行成功与否，都继续运行剩余的测试套件。但事实是任何一个套件运行失败，则脚本退出。在这个例子中能够看到<code>-e</code>的不便之处。</p>
-<p>那是不是就没法愉快地使用<code>-e</code>了呢，其实也不然。因为<code>errexit</code>是以一条语句为单位进行判定的，所以可以使用下面的形式来避免脚本的提前退出：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh || <span class="built_in">echo</span> <span class="string">'test suite A falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh || <span class="built_in">echo</span> <span class="string">'test suite B falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh || <span class="built_in">echo</span> <span class="string">'test suite C falis'</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
-<p>其中<code>||</code>的效果是，如果前面<code>sh test_suite_A.sh</code>的返回码非零，则会执行<code>||</code>后面的语句，但整个<code>sh test_suite_A.sh || echo &#39;test suite A falis&#39;</code>的返回码是<code>echo</code>语句的返回码，也就是0。将这种方式和<code>set -e</code>结合在一起使用，就可以对某些预料之内的错误返回码进行例外处理，同时还享受<code>set -e</code>带给你的自动错误捕获。</p>
-<h2 id="u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6"><a href="#u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6" class="headerlink" title="显式化运行进度"></a>显式化运行进度</h2><p>你可能见过这样的脚本：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_A.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_B.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_C.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
-<p>其目的是显式化脚本运行的进度，这样就可以很容易通过脚本运行的log来判断出在哪里出了错。但每条语句都这么写也未免太繁琐了。</p>
-<p>另一个Shell的Option可以帮到你，那就是<code>-v</code>，加了这个Option之后，每条运行的语句都会先输出到屏幕上，然后再执行。</p>
-<p><code>-x</code>与<code>-v</code>类似，其差别在于如果你的命令中包含变量，<code>-x</code>会将这个变量用真实的值替换掉，比如：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> -x</span><br><span class="line"></span><br><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$DIR</span></span><br></pre></td></tr></table></figure>
-<p>这个脚本的输出就是：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> /home/admin/</span><br></pre></td></tr></table></figure>
-<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>使用<code>set -v</code>来保证错误真正能够报告给CI，使用<code>set -e</code>来可视化运行的进度。当然你可以直接使用<code>set -ev</code>来两者皆得。同时使用相应的手段来处理例外。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/06/10/编写CI脚本的一些小tip/" data-id="cip9fu4cj0001hn8z7phpmyds" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-更稳定和更表意的代码" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/06/10/更稳定和更表意的代码/" class="article-date">
-  <time datetime="2016-06-10T08:13:55.000Z" itemprop="datePublished">2016-06-10</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/06/10/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>几天前在一次代码走查中就一段代码（示例代码）展开了讨论。</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">user</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(user.name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>在上面这段代码中，<code>user.name</code>是<code>user</code>这个入参唯一被使用的地方。所以一位同学的意见是：</p>
-<blockquote>
-<p>既然唯一使用user的地方只是使用了它的name属性，那么为什么不减少函数对外的依赖，把入参改成name？</p>
-</blockquote>
-<p>也就是下面这个样子：</p>
-<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">name</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-<p>而我是不赞同这么改的，当时因为时间比较晚了，也没有花太多时间详细讨论。现在终于腾出点时间来，还是应该好好讨论一下。上述修改方式的初衷是减少依赖。然而在我看来这么改其实并没有减少依赖，只是依赖的东西变了，原来依赖于<code>用户</code>这个概念，现在依赖于用户的一个属性。所以依赖并没有减少，那么我们再来看看关于依赖的另一个很重要的概念：稳定性。</p>
-<h2 id="u4F9D_u8D56_u7684_u7A33_u5B9A_u6027"><a href="#u4F9D_u8D56_u7684_u7A33_u5B9A_u6027" class="headerlink" title="依赖的稳定性"></a>依赖的稳定性</h2><p>依赖不可避免，如果你的软件的所有组件都是完全分离开来，互相不调用，那么相信这个软件也是完全没用的。然而有依赖就会产生耦合。我们不希望被依赖方一修改，依赖方就要进行相应修改，所以我们希望这个依赖是 <strong>稳定的</strong>。</p>
-<p>从这个角度再来审视一下上述的修改。现在<code>userAddedNotification</code>函数使用的是<code>user</code>的<code>name</code>属性来拼装一个字符串消息，并发送出去。那么这个函数的实现是否可能会修改呢？从其字面意思来这个函数要做的事情是对<strong>添加用户</strong>这个事件进行响应，那么这个响应就很有可能不仅仅是发一条文字消息，也有可能会在数据库中插入一条记录，为了保证可追溯性，就会将<code>user</code>的<code>id</code>也保存在数据库中。所以传<code>user</code>作为参数是更合理的。</p>
-<p>即使不考虑未来的需求，使用<code>user.name</code>这个字段也只是<code>userAddedNotification</code>这个函数的实现细节，传<code>name</code>作为参数就逼迫着用户去了解你使用了<code>name</code>字段的这个细节。而这恰恰是用户没必要去了解的。</p>
-<p>依赖的稳定性很重要，它会大大减少维护软件的成本。而上述修改还有一个很明显的问题，那就是代码的表意性。</p>
-<h2 id="u4EE3_u7801_u7684_u8868_u610F_u6027"><a href="#u4EE3_u7801_u7684_u8868_u610F_u6027" class="headerlink" title="代码的表意性"></a>代码的表意性</h2><p>代码写出来是给人看的，所以表意性很重要。既然函数名是说用户被添加了，那么不应该理所当然的把一个用户作为参数传进去吗？</p>
-<p>再看两个例子：</p>
-<h3 id="ActiveRecord"><a href="#ActiveRecord" class="headerlink" title="ActiveRecord"></a>ActiveRecord</h3><p><code>Rails</code>的<code>ActiveRecord</code>实现从<code>API</code>友好角度来看无疑是所有ORM里面做的最好的，没有之一。举个经典的例子：<code>Post</code>和<code>Comment</code>的关系。一个篇<code>Post</code>会有多个<code>Comment</code>，则在数据库的<code>comments</code>表中会存在一个字段叫做<code>post_id</code>，来和某个<code>post</code>的记录关联起来。但是作为上层用户，我们不希望了解这些细节，不管你底层用来进行关联的字段是<code>post_id</code>，<code>postId</code>，还是<code>postID</code>，我都统统不关心，我只希望能够通过这样的API来操作它们之间的关联：</p>
-<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">comment = <span class="constant">Comment</span>.new</span><br><span class="line">post = <span class="constant">Post</span>.find_by_title(<span class="string">'title'</span>)</span><br><span class="line">comment.post = post</span><br></pre></td></tr></table></figure>
-<p>在上述代码的第三行中，它进行的本质操作其实是<code>comment.post_id = post.id</code>，也就是说我需要的只是<code>post</code>的<code>id</code>字段，那么你喜欢<code>comment.post = post</code>还是<code>comment.post_id = post.id</code>呢？</p>
-<h3 id="Six"><a href="#Six" class="headerlink" title="Six"></a>Six</h3><p><a href="https://github.com/randx/six" target="_blank" rel="external">Six</a>是一个用来做权限控制的库，使用它可以写出这样的代码：</p>
-<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, <span class="symbol">:push_code</span>, project)</span><br></pre></td></tr></table></figure>
-<p>其中<code>current_user</code>知道自己在<code>project</code>上的角色，所以你可以想象这个<code>can?</code>函数的底层实现肯定就是先找到<code>current_user</code>在<code>project</code>上的角色，然后再看看这个角色是否能够进行<code>push_code</code>这个操作。底层的细节可能会更加复杂，但我是不需要关心这些的。我只关心<strong>这个人</strong>是否能够做<strong>这件事情</strong>。所以对比一下，你是否会喜欢下面的代码？</p>
-<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), <span class="symbol">:push_code</span>)</span><br></pre></td></tr></table></figure>
-<p>反正我是不喜欢，即繁琐，又不够表意。</p>
-<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/06/10/更稳定和更表意的代码/" data-id="cip9fu4cl0002hn8zlrzsvf5v" class="article-share-link">Share</a>
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-  
-    <article id="post-在Procfile中小心使用PORT这个环境变量" class="article article-type-post" itemscope itemprop="blogPost">
-  <div class="article-meta">
-    <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/" class="article-date">
-  <time datetime="2016-06-10T08:13:33.000Z" itemprop="datePublished">2016-06-10</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h2 id="u4E8B_u7531"><a href="#u4E8B_u7531" class="headerlink" title="事由"></a>事由</h2><p>最近工作的gitlab的代码库上，它使用<code>foreman</code>来管理web进程和后台任务进程，其中启动web进程的命令如下：</p>
-<p><code>web: bundle exec unicorn_rails -p ${PORT:=&quot;3000&quot;} -E ${RAILS_ENV:=&quot;development&quot;} -c ${UNICORN_CONFIG:=&quot;config/unicorn.rb&quot;}</code></p>
-<p>命令看起来（事实证明也仅仅是看起来。。。）很明白，<code>-p</code>和<code>-E</code>的默认值分别是<code>3000</code>和<code>development</code>，如果需要覆盖则指定<code>PORT</code>和<code>RAILS_ENV</code>这两个环境变量即可。</p>
-<p>默认情况下使用<code>foreman start</code>这个命令，当我想用<code>4000</code>，而不是<code>3000</code>来启动<code>unicorn</code>时，使用如下命令<code>PORT=4000 foreman start</code>来进行启动，然后期望它乖乖地在<code>4000</code>上启动。出现一个：</p>
-<p><code>listening on addr=0.0.0.0:4000</code></p>
-<p>但事实看到的还是：</p>
-<p><code>listening on addr=0.0.0.0:3000</code></p>
-<p>查了半天也没什么头绪，<code>3000</code>这个幽灵一直阴魂不散。然后就在gitlab的整个代码库中搜索<code>3000</code>这个字样，然后在600多个搜索结果中发现了<code>.foreman</code>这个文件。其中有这么一行：</p>
-<p><code>port: 3000</code></p>
-<p>咦？会是这个问题吗，不过这个是小写的<code>port</code>呀，为什么会影响到那个<code>PORT</code>的环境变量呢？如果不想知道中间的探寻过程，可以直接跳到下面的结论部分。</p>
-<h2 id="u63A2_u5BFB"><a href="#u63A2_u5BFB" class="headerlink" title="探寻"></a>探寻</h2><p>粗略地查了查<code>foreman</code>的<a href="https://github.com/ddollar/foreman/wiki" target="_blank" rel="external">wiki</a>，发现并没有涉及到这个资料。然后再看看<code>foreman</code>的源码，在<code>cli.rb</code>这个文件中发现了这么一行：</p>
-<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults = <span class="constant">::YAML::</span>load_file(<span class="string">".foreman"</span>) || &#123;&#125;</span><br></pre></td></tr></table></figure>
-<p>嗯，看起来<code>foreman</code>确实读了这个文件，然后把它放到了<code>engine.rb</code>的<code>base_port</code>这个方法中供别人调用：</p>
-<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">base_port</span></span></span><br><span class="line">	(options[<span class="symbol">:port</span>] || env[<span class="string">"PORT"</span>] || <span class="constant">ENV</span>[<span class="string">"PORT"</span>] || <span class="number">5000</span>).to_i</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
-<p>那这个<code>base_port</code>是个啥呢，其实就是如果你不想给<code>Procfile</code>中定义的那些任务分配端口的话，它就会从这个<code>base_port</code>开始100、100的往上加，并分配给这些进程。但是每个进程使用端口的方式是不一样的，那通过什么方式把这个端口分配给大家呢？答案就是，<code>PORT</code>这个环境变量。。。</p>
-<p>所以说<code>-p ${PORT:=&quot;3000”}</code>中的这个默认的<code>3000</code>其实永远都不会发生作用，如果你不通过任何形式指定<code>PORT</code>，那么默认值就是从<code>5000</code>这个<code>base_port</code>算出来的一个值。但这个值也可以通过命令行指定，即<code>-p</code>。还有一种方式就是那个<code>.foreman</code>文件了。</p>
-<p>看下面这个例子：<br>对于这样的<code>Procfile</code>:</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a: echo $&#123;PORT&#125;&#10;b: echo $&#123;PORT&#125;&#10;c: echo $&#123;PORT&#125;&#10;d: echo $&#123;PORT&#125;</span><br></pre></td></tr></table></figure>
-<p>在上述的那个<code>.foreman</code>文件存在的时候，运行<code>foreman start</code>看到的结果会是这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 3000&#10;11:46:12 b.1    | 3100&#10;11:46:12 c.1    | 3200&#10;11:46:12 d.1    | 3300</span><br></pre></td></tr></table></figure>
-<p>无论上述的那个<code>.foreman</code>文件存在与否，运行<code>foreman start -p 4000</code>看到的结果会是这样：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 4000&#10;11:46:12 b.1    | 4100&#10;11:46:12 c.1    | 4200&#10;11:46:12 d.1    | 4300</span><br></pre></td></tr></table></figure>
-<h2 id="u7ED3_u8BBA"><a href="#u7ED3_u8BBA" class="headerlink" title="结论"></a>结论</h2><p>对于上面那个例子，详细来讲就是，使用<code>PORT=xxx foreman start</code>这种形式永远都不会发生作用。至于剩下的情况：</p>
-<ul>
-<li>不存在<code>.foreman</code>文件，或者文件中不存在<code>port</code>值，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>5000</code>（<code>foreman</code>源码中写死的值）</li>
-<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>4001</code></li>
-<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start -p 4002</code>时，<code>PORT</code>的值就是<code>4002</code>。也就是说<code>-p</code>的优先级会大于<code>.foreman</code>文件</li>
-</ul>
-<p>这里的<code>PORT</code>没法发生作用的原因是因为它跟<code>foreman</code>的保留环境变量冲突了，那么这种冲突的环境变量还有谁呢？从代码来看，应该就只有<code>PORT</code>和<code>PS</code>两个，要小心它们！至于PS的内容是什么，你不妨自己试试看：）</p>
-<p>话说gitlab在<code>Procfile</code>中这么写还真是挺误导人的，鄙视一下。。。</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/06/10/在Procfile中小心使用PORT这个环境变量/" data-id="cip9fu4cn0003hn8zssfk2g1g" class="article-share-link">Share</a>
+        <a href="http://cui-liqiang.github.io/2016/06/10/前后端分离，JWT还是Cookie？/#disqus_thread" class="article-comment-link">Comments</a>
       
       
     </footer>
@@ -359,8 +168,8 @@
   
     <article id="post-使用pushState和replaceState构建应用" class="article article-type-post" itemscope itemprop="blogPost">
   <div class="article-meta">
-    <a href="/2016/06/10/使用pushState和replaceState构建应用/" class="article-date">
-  <time datetime="2016-06-10T08:13:01.000Z" itemprop="datePublished">2016-06-10</time>
+    <a href="/2016/04/24/使用pushState和replaceState构建应用/" class="article-date">
+  <time datetime="2016-04-24T05:47:06.000Z" itemprop="datePublished">2016-04-24</time>
 </a>
     
   </div>
@@ -371,7 +180,7 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2016/06/10/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
+      <a class="article-title" href="/2016/04/24/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
     </h1>
   
 
@@ -436,7 +245,208 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="http://cui-liqiang.github.io/2016/06/10/使用pushState和replaceState构建应用/" data-id="cip9fu4c40000hn8ztqcprj33" class="article-share-link">Share</a>
+      <a data-url="http://cui-liqiang.github.io/2016/04/24/使用pushState和replaceState构建应用/" data-id="cip9t22ia0000ew8zrxzxlqnk" class="article-share-link">Share</a>
+      
+        <a href="http://cui-liqiang.github.io/2016/04/24/使用pushState和replaceState构建应用/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-编写CI脚本的一些小tip" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/02/08/编写CI脚本的一些小tip/" class="article-date">
+  <time datetime="2016-02-08T11:31:28.000Z" itemprop="datePublished">2016-02-08</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/02/08/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A"><a href="#CI_u811A_u672C_u4E0ECI_u4E4B_u95F4_u7684_u7EA6_u5B9A" class="headerlink" title="CI脚本与CI之间的约定"></a>CI脚本与CI之间的约定</h2><p>CI上使用的Shell脚本代表一次构建（build），这个构建可以是编译、测试或者部署等。和在本地运行的Shell脚本相比，CI上使用的Shell脚本有其特点，即它是自动执行的，无法进行人工干预（比如运行到一半，提示你输入部署机密码等），脚本运行结束后CI会根据执行结果来自动判定本次构建成功与否。那么CI是如何判断的呢？很简单，就是看脚本执行的返回码，非零即为失败。比如如果脚本中的最后一行如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">exit</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+<p>则脚本返回码就是1。</p>
+<p>如果脚本中的最后一行是调用另外一个Shell脚本或者Ruby、Python等任何脚本，比如下面这两种情况：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sh another_shell.sh</span><br></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ruby script.rb</span><br></pre></td></tr></table></figure>
+<p>则整个脚本的返回码就是运行<code>another_shell.sh</code>或者<code>script.rb</code>的返回码。</p>
+<h2 id="u5931_u8D25_u7684_u811A_u672C"><a href="#u5931_u8D25_u7684_u811A_u672C" class="headerlink" title="失败的脚本"></a>失败的脚本</h2><p>如上面提到的，Shell脚本的返回码是最后一行命令的返回码。所以下面这个脚本在CI看起来其实是成功的：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br></pre></td></tr></table></figure>
+<p>而事实上<code>deploy_A_component.sh</code>的运行是失败的，所以你会看到一些奇怪的现象，那就是部署失败了，但是本次构建的状态却是绿的。所以这个脚本并没有遵守上面提到的CI脚本和CI之间的约定。</p>
+<h2 id="u6355_u6349_u9519_u8BEF_uFF01"><a href="#u6355_u6349_u9519_u8BEF_uFF01" class="headerlink" title="捕捉错误！"></a>捕捉错误！</h2><p>如何才能知道<code>sh deploy_A_component.sh</code>这一步是成功还是失败的？可以有很多种方法，最朴素的一种方法就是在脚本中判断它的返回码（当然前提是<code>deploy_A_component.sh</code>已经遵守了这个约定）。使用<code>$?</code>可以获取上一个运行的脚本的返回码，也就是这样：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">sh deploy_A_component.sh <span class="comment">#这行是执行失败的</span></span><br><span class="line"><span class="keyword">if</span> [ $? <span class="operator">-ne</span> <span class="number">0</span> ]; <span class="keyword">then</span></span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy fail!'</span></span><br><span class="line">	<span class="built_in">exit</span> <span class="number">1</span></span><br><span class="line"><span class="keyword">else</span> </span><br><span class="line">	<span class="built_in">echo</span> <span class="string">'deploy A successfully'</span></span><br><span class="line"><span class="keyword">fi</span></span><br></pre></td></tr></table></figure>
+<p>通过这种方式就可以对某一条特定命令的错误进行捕捉。但是如果每条语句都这么写，那也是挺大的工作量。</p>
+<p>还好Shell脚本提供了一种机制可以自动捕获每一行错误，那就是Shell Option。像下面这样：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh deploy_A_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br><span class="line">sh deploy_B_component.sh</span><br></pre></td></tr></table></figure>
+<p>其中<code>-e</code>表示<code>errexit</code>，即任何一条命令的返回码非零，则立即退出，且退出码即为执行错误的那条命令的返回码。这样世界就清净了，不需要再写茫茫多的<code>if [ $? -ne 0 ]</code>的判断了！</p>
+<h2 id="u5904_u7406_u4F8B_u5916"><a href="#u5904_u7406_u4F8B_u5916" class="headerlink" title="处理例外"></a>处理例外</h2><p><code>-e</code>虽然方便，但也有不方便的时候，比如下面这个例子：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
+<p>其实我的意图是无论<code>A</code>测试套件运行成功与否，都继续运行剩余的测试套件。但事实是任何一个套件运行失败，则脚本退出。在这个例子中能够看到<code>-e</code>的不便之处。</p>
+<p>那是不是就没法愉快地使用<code>-e</code>了呢，其实也不然。因为<code>errexit</code>是以一条语句为单位进行判定的，所以可以使用下面的形式来避免脚本的提前退出：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> <span class="operator">-e</span></span><br><span class="line"></span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh || <span class="built_in">echo</span> <span class="string">'test suite A falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh || <span class="built_in">echo</span> <span class="string">'test suite B falis'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh || <span class="built_in">echo</span> <span class="string">'test suite C falis'</span></span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+<p>其中<code>||</code>的效果是，如果前面<code>sh test_suite_A.sh</code>的返回码非零，则会执行<code>||</code>后面的语句，但整个<code>sh test_suite_A.sh || echo &#39;test suite A falis&#39;</code>的返回码是<code>echo</code>语句的返回码，也就是0。将这种方式和<code>set -e</code>结合在一起使用，就可以对某些预料之内的错误返回码进行例外处理，同时还享受<code>set -e</code>带给你的自动错误捕获。</p>
+<h2 id="u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6"><a href="#u663E_u5F0F_u5316_u8FD0_u884C_u8FDB_u5EA6" class="headerlink" title="显式化运行进度"></a>显式化运行进度</h2><p>你可能见过这样的脚本：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_A.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_A.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_B.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_B.sh</span><br><span class="line"><span class="built_in">echo</span> <span class="string">'running test_suite_C.sh'</span></span><br><span class="line">sh <span class="built_in">test</span>_suite_C.sh</span><br></pre></td></tr></table></figure>
+<p>其目的是显式化脚本运行的进度，这样就可以很容易通过脚本运行的log来判断出在哪里出了错。但每条语句都这么写也未免太繁琐了。</p>
+<p>另一个Shell的Option可以帮到你，那就是<code>-v</code>，加了这个Option之后，每条运行的语句都会先输出到屏幕上，然后再执行。</p>
+<p><code>-x</code>与<code>-v</code>类似，其差别在于如果你的命令中包含变量，<code>-x</code>会将这个变量用真实的值替换掉，比如：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">set</span> -x</span><br><span class="line"></span><br><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> <span class="variable">$DIR</span></span><br></pre></td></tr></table></figure>
+<p>这个脚本的输出就是：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">DIR=/home/admin/</span><br><span class="line"><span class="built_in">cd</span> /home/admin/</span><br></pre></td></tr></table></figure>
+<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>使用<code>set -v</code>来保证错误真正能够报告给CI，使用<code>set -e</code>来可视化运行的进度。当然你可以直接使用<code>set -ev</code>来两者皆得。同时使用相应的手段来处理例外。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://cui-liqiang.github.io/2016/02/08/编写CI脚本的一些小tip/" data-id="cip9t22j20001ew8zh7pxh3v4" class="article-share-link">Share</a>
+      
+        <a href="http://cui-liqiang.github.io/2016/02/08/编写CI脚本的一些小tip/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-更稳定和更表意的代码" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/02/04/更稳定和更表意的代码/" class="article-date">
+  <time datetime="2016-02-04T02:15:07.000Z" itemprop="datePublished">2016-02-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/02/04/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>几天前在一次代码走查中就一段代码（示例代码）展开了讨论。</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">user</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(user.name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>在上面这段代码中，<code>user.name</code>是<code>user</code>这个入参唯一被使用的地方。所以一位同学的意见是：</p>
+<blockquote>
+<p>既然唯一使用user的地方只是使用了它的name属性，那么为什么不减少函数对外的依赖，把入参改成name？</p>
+</blockquote>
+<p>也就是下面这个样子：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">userAddedNotification</span>(<span class="params">name</span>) </span>&#123;</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">	notifyAdmin(name + <span class="string">' is added'</span>)</span><br><span class="line">	<span class="comment">//....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>而我是不赞同这么改的，当时因为时间比较晚了，也没有花太多时间详细讨论。现在终于腾出点时间来，还是应该好好讨论一下。上述修改方式的初衷是减少依赖。然而在我看来这么改其实并没有减少依赖，只是依赖的东西变了，原来依赖于<code>用户</code>这个概念，现在依赖于用户的一个属性。所以依赖并没有减少，那么我们再来看看关于依赖的另一个很重要的概念：稳定性。</p>
+<h2 id="u4F9D_u8D56_u7684_u7A33_u5B9A_u6027"><a href="#u4F9D_u8D56_u7684_u7A33_u5B9A_u6027" class="headerlink" title="依赖的稳定性"></a>依赖的稳定性</h2><p>依赖不可避免，如果你的软件的所有组件都是完全分离开来，互相不调用，那么相信这个软件也是完全没用的。然而有依赖就会产生耦合。我们不希望被依赖方一修改，依赖方就要进行相应修改，所以我们希望这个依赖是 <strong>稳定的</strong>。</p>
+<p>从这个角度再来审视一下上述的修改。现在<code>userAddedNotification</code>函数使用的是<code>user</code>的<code>name</code>属性来拼装一个字符串消息，并发送出去。那么这个函数的实现是否可能会修改呢？从其字面意思来这个函数要做的事情是对<strong>添加用户</strong>这个事件进行响应，那么这个响应就很有可能不仅仅是发一条文字消息，也有可能会在数据库中插入一条记录，为了保证可追溯性，就会将<code>user</code>的<code>id</code>也保存在数据库中。所以传<code>user</code>作为参数是更合理的。</p>
+<p>即使不考虑未来的需求，使用<code>user.name</code>这个字段也只是<code>userAddedNotification</code>这个函数的实现细节，传<code>name</code>作为参数就逼迫着用户去了解你使用了<code>name</code>字段的这个细节。而这恰恰是用户没必要去了解的。</p>
+<p>依赖的稳定性很重要，它会大大减少维护软件的成本。而上述修改还有一个很明显的问题，那就是代码的表意性。</p>
+<h2 id="u4EE3_u7801_u7684_u8868_u610F_u6027"><a href="#u4EE3_u7801_u7684_u8868_u610F_u6027" class="headerlink" title="代码的表意性"></a>代码的表意性</h2><p>代码写出来是给人看的，所以表意性很重要。既然函数名是说用户被添加了，那么不应该理所当然的把一个用户作为参数传进去吗？</p>
+<p>再看两个例子：</p>
+<h3 id="ActiveRecord"><a href="#ActiveRecord" class="headerlink" title="ActiveRecord"></a>ActiveRecord</h3><p><code>Rails</code>的<code>ActiveRecord</code>实现从<code>API</code>友好角度来看无疑是所有ORM里面做的最好的，没有之一。举个经典的例子：<code>Post</code>和<code>Comment</code>的关系。一个篇<code>Post</code>会有多个<code>Comment</code>，则在数据库的<code>comments</code>表中会存在一个字段叫做<code>post_id</code>，来和某个<code>post</code>的记录关联起来。但是作为上层用户，我们不希望了解这些细节，不管你底层用来进行关联的字段是<code>post_id</code>，<code>postId</code>，还是<code>postID</code>，我都统统不关心，我只希望能够通过这样的API来操作它们之间的关联：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">comment = <span class="constant">Comment</span>.new</span><br><span class="line">post = <span class="constant">Post</span>.find_by_title(<span class="string">'title'</span>)</span><br><span class="line">comment.post = post</span><br></pre></td></tr></table></figure>
+<p>在上述代码的第三行中，它进行的本质操作其实是<code>comment.post_id = post.id</code>，也就是说我需要的只是<code>post</code>的<code>id</code>字段，那么你喜欢<code>comment.post = post</code>还是<code>comment.post_id = post.id</code>呢？</p>
+<h3 id="Six"><a href="#Six" class="headerlink" title="Six"></a>Six</h3><p><a href="https://github.com/randx/six" target="_blank" rel="external">Six</a>是一个用来做权限控制的库，使用它可以写出这样的代码：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user, <span class="symbol">:push_code</span>, project)</span><br></pre></td></tr></table></figure>
+<p>其中<code>current_user</code>知道自己在<code>project</code>上的角色，所以你可以想象这个<code>can?</code>函数的底层实现肯定就是先找到<code>current_user</code>在<code>project</code>上的角色，然后再看看这个角色是否能够进行<code>push_code</code>这个操作。底层的细节可能会更加复杂，但我是不需要关心这些的。我只关心<strong>这个人</strong>是否能够做<strong>这件事情</strong>。所以对比一下，你是否会喜欢下面的代码？</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">can?(current_user.role_on(project), <span class="symbol">:push_code</span>)</span><br></pre></td></tr></table></figure>
+<p>反正我是不喜欢，即繁琐，又不够表意。</p>
+<h2 id="u5C0F_u7ED3"><a href="#u5C0F_u7ED3" class="headerlink" title="小结"></a>小结</h2><p>有时候确实会需要做出类似于本文第一个例子中所示的那种修改。但无论做什么修改，都可以先问问自己，这个修改带来了什么好处，又带来了什么坏处，然后再综合权衡一下。而当你思考好坏的标准时，可以重点关注一下依赖的稳定性和代码的表意性。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/" data-id="cip9t22j90002ew8zsjq1mrlc" class="article-share-link">Share</a>
+      
+        <a href="http://cui-liqiang.github.io/2016/02/04/更稳定和更表意的代码/#disqus_thread" class="article-comment-link">Comments</a>
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+  
+    <article id="post-在Procfile中小心使用PORT这个环境变量" class="article article-type-post" itemscope itemprop="blogPost">
+  <div class="article-meta">
+    <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/" class="article-date">
+  <time datetime="2016-01-10T13:16:17.000Z" itemprop="datePublished">2016-01-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h2 id="u4E8B_u7531"><a href="#u4E8B_u7531" class="headerlink" title="事由"></a>事由</h2><p>最近工作的gitlab的代码库上，它使用<code>foreman</code>来管理web进程和后台任务进程，其中启动web进程的命令如下：</p>
+<p><code>web: bundle exec unicorn_rails -p ${PORT:=&quot;3000&quot;} -E ${RAILS_ENV:=&quot;development&quot;} -c ${UNICORN_CONFIG:=&quot;config/unicorn.rb&quot;}</code></p>
+<p>命令看起来（事实证明也仅仅是看起来。。。）很明白，<code>-p</code>和<code>-E</code>的默认值分别是<code>3000</code>和<code>development</code>，如果需要覆盖则指定<code>PORT</code>和<code>RAILS_ENV</code>这两个环境变量即可。</p>
+<p>默认情况下使用<code>foreman start</code>这个命令，当我想用<code>4000</code>，而不是<code>3000</code>来启动<code>unicorn</code>时，使用如下命令<code>PORT=4000 foreman start</code>来进行启动，然后期望它乖乖地在<code>4000</code>上启动。出现一个：</p>
+<p><code>listening on addr=0.0.0.0:4000</code></p>
+<p>但事实看到的还是：</p>
+<p><code>listening on addr=0.0.0.0:3000</code></p>
+<p>查了半天也没什么头绪，<code>3000</code>这个幽灵一直阴魂不散。然后就在gitlab的整个代码库中搜索<code>3000</code>这个字样，然后在600多个搜索结果中发现了<code>.foreman</code>这个文件。其中有这么一行：</p>
+<p><code>port: 3000</code></p>
+<p>咦？会是这个问题吗，不过这个是小写的<code>port</code>呀，为什么会影响到那个<code>PORT</code>的环境变量呢？如果不想知道中间的探寻过程，可以直接跳到下面的结论部分。</p>
+<h2 id="u63A2_u5BFB"><a href="#u63A2_u5BFB" class="headerlink" title="探寻"></a>探寻</h2><p>粗略地查了查<code>foreman</code>的<a href="https://github.com/ddollar/foreman/wiki" target="_blank" rel="external">wiki</a>，发现并没有涉及到这个资料。然后再看看<code>foreman</code>的源码，在<code>cli.rb</code>这个文件中发现了这么一行：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults = <span class="constant">::YAML::</span>load_file(<span class="string">".foreman"</span>) || &#123;&#125;</span><br></pre></td></tr></table></figure>
+<p>嗯，看起来<code>foreman</code>确实读了这个文件，然后把它放到了<code>engine.rb</code>的<code>base_port</code>这个方法中供别人调用：</p>
+<figure class="highlight ruby"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">base_port</span></span></span><br><span class="line">	(options[<span class="symbol">:port</span>] || env[<span class="string">"PORT"</span>] || <span class="constant">ENV</span>[<span class="string">"PORT"</span>] || <span class="number">5000</span>).to_i</span><br><span class="line"><span class="keyword">end</span></span><br></pre></td></tr></table></figure>
+<p>那这个<code>base_port</code>是个啥呢，其实就是如果你不想给<code>Procfile</code>中定义的那些任务分配端口的话，它就会从这个<code>base_port</code>开始100、100的往上加，并分配给这些进程。但是每个进程使用端口的方式是不一样的，那通过什么方式把这个端口分配给大家呢？答案就是，<code>PORT</code>这个环境变量。。。</p>
+<p>所以说<code>-p ${PORT:=&quot;3000”}</code>中的这个默认的<code>3000</code>其实永远都不会发生作用，如果你不通过任何形式指定<code>PORT</code>，那么默认值就是从<code>5000</code>这个<code>base_port</code>算出来的一个值。但这个值也可以通过命令行指定，即<code>-p</code>。还有一种方式就是那个<code>.foreman</code>文件了。</p>
+<p>看下面这个例子：<br>对于这样的<code>Procfile</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">a: echo $&#123;PORT&#125;&#10;b: echo $&#123;PORT&#125;&#10;c: echo $&#123;PORT&#125;&#10;d: echo $&#123;PORT&#125;</span><br></pre></td></tr></table></figure>
+<p>在上述的那个<code>.foreman</code>文件存在的时候，运行<code>foreman start</code>看到的结果会是这样：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 3000&#10;11:46:12 b.1    | 3100&#10;11:46:12 c.1    | 3200&#10;11:46:12 d.1    | 3300</span><br></pre></td></tr></table></figure>
+<p>无论上述的那个<code>.foreman</code>文件存在与否，运行<code>foreman start -p 4000</code>看到的结果会是这样：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11:46:12 a.1    | 4000&#10;11:46:12 b.1    | 4100&#10;11:46:12 c.1    | 4200&#10;11:46:12 d.1    | 4300</span><br></pre></td></tr></table></figure>
+<h2 id="u7ED3_u8BBA"><a href="#u7ED3_u8BBA" class="headerlink" title="结论"></a>结论</h2><p>对于上面那个例子，详细来讲就是，使用<code>PORT=xxx foreman start</code>这种形式永远都不会发生作用。至于剩下的情况：</p>
+<ul>
+<li>不存在<code>.foreman</code>文件，或者文件中不存在<code>port</code>值，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>5000</code>（<code>foreman</code>源码中写死的值）</li>
+<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start</code>时，<code>PORT</code>的值就是<code>4001</code></li>
+<li>存在<code>.foreman</code>文件，文件中存在<code>port</code>值为<code>4001</code>，则运行<code>foreman start -p 4002</code>时，<code>PORT</code>的值就是<code>4002</code>。也就是说<code>-p</code>的优先级会大于<code>.foreman</code>文件</li>
+</ul>
+<p>这里的<code>PORT</code>没法发生作用的原因是因为它跟<code>foreman</code>的保留环境变量冲突了，那么这种冲突的环境变量还有谁呢？从代码来看，应该就只有<code>PORT</code>和<code>PS</code>两个，要小心它们！至于PS的内容是什么，你不妨自己试试看：）</p>
+<p>话说gitlab在<code>Procfile</code>中这么写还真是挺误导人的，鄙视一下。。。</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/" data-id="cip9t22jb0003ew8zedmfc1eq" class="article-share-link">Share</a>
+      
+        <a href="http://cui-liqiang.github.io/2016/01/10/在Procfile中小心使用PORT这个环境变量/#disqus_thread" class="article-comment-link">Comments</a>
       
       
     </footer>
@@ -463,7 +473,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/06/">June 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/04/">April 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/02/">February 2016</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2016/01/">January 2016</a></li></ul>
     </div>
   </div>
 
@@ -480,19 +490,19 @@
           </li>
         
           <li>
-            <a href="/2016/06/10/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
+            <a href="/2016/04/24/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
           </li>
         
           <li>
-            <a href="/2016/06/10/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
+            <a href="/2016/02/08/编写CI脚本的一些小tip/">编写CI脚本的一些小Tips</a>
           </li>
         
           <li>
-            <a href="/2016/06/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
+            <a href="/2016/02/04/更稳定和更表意的代码/">更稳定的依赖和更表意的代码</a>
           </li>
         
           <li>
-            <a href="/2016/06/10/使用pushState和replaceState构建应用/">使用pushState和replaceState构建应用</a>
+            <a href="/2016/01/10/在Procfile中小心使用PORT这个环境变量/">在Procfile中小心使用PORT这个环境变量</a>
           </li>
         
       </ul>
@@ -521,6 +531,18 @@
   
 </nav>
     
+<script>
+  var disqus_shortname = 'cuiliqiang';
+  
+  (function(){
+    var dsq = document.createElement('script');
+    dsq.type = 'text/javascript';
+    dsq.async = true;
+    dsq.src = '//' + disqus_shortname + '.disqus.com/count.js';
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+  })();
+</script>
+
 
 <script src="//ajax.googleapis.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 
